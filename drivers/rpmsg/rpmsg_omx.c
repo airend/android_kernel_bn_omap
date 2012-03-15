@@ -115,11 +115,6 @@ static DEFINE_SPINLOCK(rpmsg_omx_services_lock);
 static LIST_HEAD(rpmsg_omx_services_list);
 
 #ifdef CONFIG_ION_OMAP
-#ifdef CONFIG_PVR_SGX
-#include "../gpu/pvr/ion.h"
-#endif
-#endif
-
 static int _rpmsg_pa_to_da(struct rpmsg_omx_instance *omx, u32 pa, u32 *da)
 {
 	int ret;
@@ -143,7 +138,6 @@ static int _rpmsg_pa_to_da(struct rpmsg_omx_instance *omx, u32 pa, u32 *da)
 	return ret;
 }
 
-#ifdef CONFIG_ION_OMAP
 static void _rpmsg_buffer_update_page_list(struct rpmsg_omx_instance *omx,
 					   struct rpmsg_buffer *buffer)
 {
