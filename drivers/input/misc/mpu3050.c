@@ -610,7 +610,7 @@ static int __devinit mpu3050_driver_probe(struct i2c_client *client,
 	if (data->client->irq) {
 		ret = request_threaded_irq(data->client->irq, NULL,
 					mpu3050_thread_irq,
-					data->pdata->irq_flags,
+					data->pdata->irq_flags | IRQF_ONESHOT,
 					data->client->name, data);
 		if (ret < 0) {
 			dev_err(&data->client->dev,
