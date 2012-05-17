@@ -468,7 +468,7 @@ static int __devinit twl6030_usb_probe(struct platform_device *pdev)
 		       WAKE_LOCK_SUSPEND, "charger_detector");
 	twl->irq_enabled = true;
 	status = request_threaded_irq(twl->irq1, NULL, twl6030_usbotg_irq,
-			IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING,
+			IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING | IRQF_ONESHOT,
 			"twl6030_usb", twl);
 	if (status < 0) {
 		dev_err(&pdev->dev, "can't get IRQ %d, err %d\n",
@@ -480,7 +480,7 @@ static int __devinit twl6030_usb_probe(struct platform_device *pdev)
 	}
 
 	status = request_threaded_irq(twl->irq2, NULL, twl6030_usb_irq,
-			IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING,
+			IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING | IRQF_ONESHOT,
 			"twl6030_usb", twl);
 	if (status < 0) {
 		dev_err(&pdev->dev, "can't get IRQ %d, err %d\n",
