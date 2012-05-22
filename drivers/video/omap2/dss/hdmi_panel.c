@@ -191,9 +191,9 @@ static int hdmi_panel_probe(struct omap_dss_device *dssdev)
 
 	hdmi.hpd_gpio = priv->hpd_gpio;
 	r = request_threaded_irq(gpio_to_irq(hdmi.hpd_gpio),
-		NULL, hpd_enable_handler,
-		IRQF_DISABLED | IRQF_TRIGGER_RISING |
-		IRQF_TRIGGER_FALLING, "hpd", NULL);
+				 NULL, hpd_enable_handler,
+				 IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING |
+				 IRQF_ONESHOT, "hpd", NULL);
 	if (r < 0) {
 		pr_err("hdmi: request_irq %d failed\n",
 			gpio_to_irq(hdmi.hpd_gpio));
