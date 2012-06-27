@@ -20,7 +20,6 @@
 #include <linux/ion.h>
 #include <linux/mm.h>
 #include <linux/omap_ion.h>
-#include <linux/scatterlist.h>
 #include <linux/slab.h>
 #include <linux/vmalloc.h>
 #ifdef CONFIG_CMA
@@ -441,11 +440,56 @@ static int omap_tiler_heap_map_user(struct ion_heap *heap,
 	return ret;
 }
 
+static struct sg_table *omap_tiler_map_dma(struct ion_heap *heap,
+			struct ion_buffer *buffer)
+{
+	struct sg_table *table;
+	struct scatterlist *sg;
+	int ret;
+	int i;
+	int n_pages = PAGE_ALIGN(buffer->size) / PAGE_SIZE;
+	unsigned char *addr = phys_to_virt(buffer->priv_phys);
+
+	/* buffer size is zero when called from OMAPLFBInitIonOmap */
+	if (n_pages == 0)
+		n_pages = 1;
+
+	table = kzalloc(sizeof(struct sg_table), GFP_KERNEL);
+	if (!table)
+		return ERR_PTR(-ENOMEM);
+
+	ret = sg_alloc_table(table, n_pages, GFP_KERNEL);
+	if (ret) {
+		kfree(table);
+		return ERR_PTR(ret);
+	}
+
+	sg = table->sgl;
+	for (i = 0; i < n_pages; i++) {
+		sg_set_page(sg, virt_to_page(addr), PAGE_SIZE, 0);
+		addr += PAGE_SIZE;
+	}
+
+	return table;
+}
+
+static void omap_tiler_unmap_dma(struct ion_heap *heap,
+			struct ion_buffer *buffer)
+{
+	if (buffer->sg_table) {
+		sg_free_table(buffer->sg_table);
+		kfree(buffer->sg_table);
+	}
+	return;
+}
+
 static struct ion_heap_ops omap_tiler_ops = {
 	.allocate = omap_tiler_heap_allocate,
 	.free = omap_tiler_heap_free,
 	.phys = omap_tiler_phys,
 	.map_user = omap_tiler_heap_map_user,
+	.map_dma = omap_tiler_map_dma,
+	.unmap_dma = omap_tiler_unmap_dma,
 };
 
 struct ion_heap *omap_tiler_heap_create(struct ion_platform_heap *data)
