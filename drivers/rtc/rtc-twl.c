@@ -581,7 +581,7 @@ static int __devinit twl_rtc_probe(struct platform_device *pdev)
 	twl_rtc->rtc = rtc;
 
 	ret = request_threaded_irq(irq, NULL, twl_rtc_interrupt,
-				   IRQF_TRIGGER_RISING,
+				   IRQF_TRIGGER_RISING | IRQF_ONESHOT,
 				   dev_name(&rtc->dev), twl_rtc);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "IRQ is not free.\n");
