@@ -687,8 +687,10 @@ static u32 get_ddr_phy_ctrl_1_attilaphy_4d(const struct lpddr2_timings *timings,
 		val = EMIF_DLL_SLAVE_DLY_CTRL_100_MHZ_AND_LESS_ATTILAPHY;
 	else if (freq <= 200000000)
 		val = EMIF_DLL_SLAVE_DLY_CTRL_200_MHZ_ATTILAPHY;
-	else
+	else if (freq <= 400000000)
 		val = EMIF_DLL_SLAVE_DLY_CTRL_400_MHZ_ATTILAPHY;
+	else
+		val = EMIF_DLL_SLAVE_DLY_CTRL_466_MHZ_ATTILAPHY;
 
 	phy |= val << DLL_SLAVE_DLY_CTRL_SHIFT_4D;
 
