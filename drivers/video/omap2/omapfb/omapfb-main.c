@@ -1764,6 +1764,20 @@ static int omapfb_allocate_all_fbs(struct omapfb2_device *fbdev)
 	return 0;
 }
 
+static void omapfb_clear_fb(struct fb_info *fbi)
+{
+	const struct fb_fillrect rect = {
+		.dx = 0,
+		.dy = 0,
+		.width = fbi->var.xres_virtual,
+		.height = fbi->var.yres_virtual,
+		.color = 0,
+		.rop = ROP_COPY,
+	};
+
+	cfb_fillrect(fbi, &rect);
+}
+
 int omapfb_realloc_fbmem(struct fb_info *fbi, unsigned long size, int type)
 {
 	struct omapfb_info *ofbi = FB2OFB(fbi);
@@ -1832,6 +1846,8 @@ int omapfb_realloc_fbmem(struct fb_info *fbi, unsigned long size, int type)
 		if (r)
 			goto err;
 	}
+
+	omapfb_clear_fb(fbi);
 
 	return 0;
 err:
@@ -2148,6 +2164,16 @@ static int omapfb_create_framebuffers(struct omapfb2_device *fbdev)
 			dev_err(fbdev->dev, "failed to change mode\n");
 			return r;
 		}
+	}
+
+	for (i = 0; i < fbdev->num_fbs; i++) {
+		struct fb_info *fbi = fbdev->fbs[i];
+		struct omapfb_info *ofbi = FB2OFB(fbi);
+
+		if (ofbi->region->size == 0)
+			continue;
+
+		omapfb_clear_fb(fbi);
 	}
 
 	/* Enable fb0 */
