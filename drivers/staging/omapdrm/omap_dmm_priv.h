@@ -149,6 +149,8 @@ struct refill_engine {
 	/* offset to lut associated with container */
 	u32 *lut_offset;
 
+	bool async;
+
 	wait_queue_head_t wait_for_refill;
 
 	struct list_head idle_node;
@@ -166,10 +168,11 @@ struct dmm {
 	dma_addr_t refill_pa;
 
 	/* refill engines */
-	struct semaphore engine_sem;
+	wait_queue_head_t engine_queue;
 	struct list_head idle_head;
 	struct refill_engine *engines;
 	int num_engines;
+	atomic_t engine_counter;
 
 	/* container information */
 	int container_width;

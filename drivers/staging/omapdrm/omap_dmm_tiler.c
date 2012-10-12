@@ -29,7 +29,6 @@
 #include <linux/mm.h>
 #include <linux/time.h>
 #include <linux/list.h>
-#include <linux/semaphore.h>
 #include <linux/debugfs.h>
 
 #include "omap_dmm_tiler.h"
@@ -139,6 +138,18 @@ static int wait_status(struct refill_engine *engine, uint32_t wait_mask)
 	return 0;
 }
 
+static void release_engine(struct refill_engine *engine)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&list_lock, flags);
+	list_add(&engine->idle_node, &omap_dmm->idle_head);
+	spin_unlock_irqrestore(&list_lock, flags);
+
+	atomic_inc(&omap_dmm->engine_counter);
+	wake_up_interruptible(&omap_dmm->engine_queue);
+}
+
 static irqreturn_t omap_dmm_irq_handler(int irq, void *arg)
 {
 	struct dmm *dmm = arg;
@@ -149,8 +160,12 @@ static irqreturn_t omap_dmm_irq_handler(int irq, void *arg)
 	writel(status, dmm->base + DMM_PAT_IRQSTATUS);
 
 	for (i = 0; i < dmm->num_engines; i++) {
-		if (status & DMM_IRQSTAT_LST)
+		if (status & DMM_IRQSTAT_LST) {
 			wake_up_interruptible(&dmm->engines[i].wait_for_refill);
+
+			if (dmm->engines[i].async)
+				release_engine(&dmm->engines[i]);
+		}
 
 		status >>= 8;
 	}
@@ -165,17 +180,24 @@ static struct dmm_txn *dmm_txn_init(struct dmm *dmm, struct tcm *tcm)
 {
 	struct dmm_txn *txn = NULL;
 	struct refill_engine *engine = NULL;
+	int ret;
+	unsigned long flags;
 
-	down(&dmm->engine_sem);
+
+	/* wait until an engine is available */
+	ret = wait_event_interruptible(omap_dmm->engine_queue,
+		atomic_add_unless(&omap_dmm->engine_counter, -1, 0));
+	if (ret)
+		return ERR_PTR(ret);
 
 	/* grab an idle engine */
-	spin_lock(&list_lock);
+	spin_lock_irqsave(&list_lock, flags);
 	if (!list_empty(&dmm->idle_head)) {
 		engine = list_entry(dmm->idle_head.next, struct refill_engine,
 					idle_node);
 		list_del(&engine->idle_node);
 	}
-	spin_unlock(&list_lock);
+	spin_unlock_irqrestore(&list_lock, flags);
 
 	BUG_ON(!engine);
 
@@ -193,7 +215,7 @@ static struct dmm_txn *dmm_txn_init(struct dmm *dmm, struct tcm *tcm)
  * Add region to DMM transaction.  If pages or pages[i] is NULL, then the
  * corresponding slot is cleared (ie. dummy_pa is programmed)
  */
-static int dmm_txn_append(struct dmm_txn *txn, struct pat_area *area,
+static void dmm_txn_append(struct dmm_txn *txn, struct pat_area *area,
 		struct mem_info *mem, uint32_t npages, uint32_t roll,
 		uint32_t y_offset)
 {
@@ -247,7 +269,7 @@ static int dmm_txn_append(struct dmm_txn *txn, struct pat_area *area,
 
 	txn->last_pat = pat;
 
-	return 0;
+	return;
 }
 
 /**
@@ -277,6 +299,9 @@ static int dmm_txn_commit(struct dmm_txn *txn, bool wait)
 		goto cleanup;
 	}
 
+	/* mark whether it is async to denote list management in IRQ handler */
+	engine->async = wait ? false : true;
+
 	/* kick reload */
 	writel(engine->refill_pa,
 		dmm->base + reg[PAT_DESCR][engine->id]);
@@ -291,11 +316,10 @@ static int dmm_txn_commit(struct dmm_txn *txn, bool wait)
 	}
 
 cleanup:
-	spin_lock(&list_lock);
-	list_add(&engine->idle_node, &dmm->idle_head);
-	spin_unlock(&list_lock);
+	/* only place engine back on list if we are done with it */
+	if (ret || wait)
+		release_engine(engine);
 
-	up(&omap_dmm->engine_sem);
 	return ret;
 }
 
@@ -323,17 +347,14 @@ static int fill(struct tcm_area *area, struct mem_info *mem, uint32_t npages,
 				.x1 = slice.p1.x, .y1 = slice.p1.y,
 		};
 
-		ret = dmm_txn_append(txn, &p_area, mem, npages, roll,
+		dmm_txn_append(txn, &p_area, mem, npages, roll,
 					y_offset);
-		if (ret)
-			goto fail;
 
 		roll += tcm_sizeof(slice);
 	}
 
 	ret = dmm_txn_commit(txn, wait);
 
-fail:
 	return ret;
 }
 
@@ -390,6 +411,7 @@ struct tiler_block *tiler_reserve_2d(enum tiler_fmt fmt, uint16_t w,
 	struct tiler_block *block;
 	u32 min_align = 128;
 	int ret;
+	unsigned long flags;
 	size_t slot_bytes;
 
 	/* check for valid format and overflow for w/h */
@@ -427,9 +449,9 @@ struct tiler_block *tiler_reserve_2d(enum tiler_fmt fmt, uint16_t w,
 	}
 
 	/* add to allocation list */
-	spin_lock(&list_lock);
+	spin_lock_irqsave(&list_lock, flags);
 	list_add(&block->alloc_node, &omap_dmm->alloc_head);
-	spin_unlock(&list_lock);
+	spin_unlock_irqrestore(&list_lock, flags);
 
 	return block;
 }
@@ -439,6 +461,7 @@ struct tiler_block *tiler_reserve_1d(size_t size)
 {
 	struct tiler_block *block = kzalloc(sizeof(*block), GFP_KERNEL);
 	int num_pages = (size + PAGE_SIZE - 1) >> PAGE_SHIFT;
+	unsigned long flags;
 
 	if (!block)
 		return ERR_PTR(-ENOMEM);
@@ -454,9 +477,9 @@ struct tiler_block *tiler_reserve_1d(size_t size)
 		return ERR_PTR(-ENOMEM);
 	}
 
-	spin_lock(&list_lock);
+	spin_lock_irqsave(&list_lock, flags);
 	list_add(&block->alloc_node, &omap_dmm->alloc_head);
-	spin_unlock(&list_lock);
+	spin_unlock_irqrestore(&list_lock, flags);
 
 	return block;
 }
@@ -466,13 +489,14 @@ EXPORT_SYMBOL(tiler_reserve_1d);
 int tiler_release(struct tiler_block *block)
 {
 	int ret = tcm_free(&block->area);
+	unsigned long flags;
 
 	if (block->area.tcm)
 		dev_err(omap_dmm->dev, "failed to release block\n");
 
-	spin_lock(&list_lock);
+	spin_lock_irqsave(&list_lock, flags);
 	list_del(&block->alloc_node);
-	spin_unlock(&list_lock);
+	spin_unlock_irqrestore(&list_lock, flags);
 
 	kfree(block);
 	return ret;
@@ -755,16 +779,17 @@ static int omap_dmm_remove(struct platform_device *dev)
 {
 	struct tiler_block *block, *_block;
 	int i;
+	unsigned long flags;
 
 	if (omap_dmm) {
 		/* free all area regions */
-		spin_lock(&list_lock);
+		spin_lock_irqsave(&list_lock, flags);
 		list_for_each_entry_safe(block, _block, &omap_dmm->alloc_head,
 					alloc_node) {
 			list_del(&block->alloc_node);
 			kfree(block);
 		}
-		spin_unlock(&list_lock);
+		spin_unlock_irqrestore(&list_lock, flags);
 
 		for (i = 0; i < omap_dmm->num_lut; i++)
 			if (omap_dmm->tcm && omap_dmm->tcm[i])
@@ -810,6 +835,8 @@ static int omap_dmm_probe(struct platform_device *dev)
 	INIT_LIST_HEAD(&omap_dmm->alloc_head);
 	INIT_LIST_HEAD(&omap_dmm->idle_head);
 
+	init_waitqueue_head(&omap_dmm->engine_queue);
+
 	/* lookup hwmod data - base address and irq */
 	mem = platform_get_resource(dev, IORESOURCE_MEM, 0);
 	if (!mem) {
@@ -840,6 +867,8 @@ static int omap_dmm_probe(struct platform_device *dev)
 
 	/* reserve CPCAM engine - engine 4 */
 	omap_dmm->num_engines--;
+
+	atomic_set(&omap_dmm->engine_counter, omap_dmm->num_engines);
 
 	/* read out actual LUT width and height */
 	pat_geom = readl(omap_dmm->base + DMM_PAT_GEOMETRY);
@@ -924,7 +953,6 @@ static int omap_dmm_probe(struct platform_device *dev)
 		goto fail;
 	}
 
-	sema_init(&omap_dmm->engine_sem, omap_dmm->num_engines);
 	for (i = 0; i < omap_dmm->num_engines; i++) {
 		omap_dmm->engines[i].id = i;
 		omap_dmm->engines[i].dmm = omap_dmm;
