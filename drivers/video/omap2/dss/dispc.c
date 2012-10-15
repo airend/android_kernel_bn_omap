@@ -60,7 +60,7 @@
 
 #define DISPC_MAX_NR_ISRS		8
 
-static struct clockdomain *l3_1_clkdm, *l3_2_clkdm;
+static struct clockdomain *l3_1_clkdm, *l3_2_clkdm, *emif_clkdm;
 
 struct omap_dispc_isr_data {
 	omap_dispc_isr_t	isr;
@@ -4152,9 +4152,11 @@ static void _omap_dispc_initial_config(void)
 	if (cpu_is_omap44xx()) {
 		l3_1_clkdm = clkdm_lookup("l3_1_clkdm");
 		l3_2_clkdm = clkdm_lookup("l3_2_clkdm");
+		emif_clkdm = clkdm_lookup("l3_emif_clkdm");
 	} else if (cpu_is_omap54xx() && (omap_rev() <= OMAP5430_REV_ES1_0)) {
 		l3_1_clkdm = clkdm_lookup("l3main1_clkdm");
 		l3_2_clkdm = clkdm_lookup("l3main2_clkdm");
+		emif_clkdm = clkdm_lookup("emif_clkdm");
 	}
 
 	/* FUNCGATED */
@@ -4272,6 +4274,7 @@ static int dispc_runtime_suspend(struct device *dev)
 			(omap_rev() <= OMAP5430_REV_ES1_0))) {
 		clkdm_allow_idle(l3_1_clkdm);
 		clkdm_allow_idle(l3_2_clkdm);
+		clkdm_allow_idle(emif_clkdm);
 	}
 
 	return 0;
@@ -4308,6 +4311,7 @@ static int dispc_runtime_resume(struct device *dev)
 			(omap_rev() <= OMAP5430_REV_ES1_0))) {
 		clkdm_deny_idle(l3_1_clkdm);
 		clkdm_deny_idle(l3_2_clkdm);
+		clkdm_deny_idle(emif_clkdm);
 	}
 
 	dispc_restore_context();
