@@ -197,12 +197,6 @@ static struct clk tie_low_clock_ck = {
 	.ops		= &clkops_null,
 };
 
-static struct clk utmi_phy_clkout_ck = {
-	.name		= "utmi_phy_clkout_ck",
-	.rate		= 60000000,
-	.ops		= &clkops_null,
-};
-
 static struct clk xclk60mhsp1 = {
 	.name		= "xclk60mhsp1",
 	.rate		= 60000000,
@@ -1028,6 +1022,13 @@ static struct clk dpll_usb_clkdcoldo_ck = {
 	.parent		= &dpll_usb_ck,
 	.clksel_reg	= OMAP4430_CM_CLKDCOLDO_DPLL_USB,
 	.ops		= &clkops_omap4_dpllmx_ops,
+	.recalc		= &followparent_recalc,
+};
+
+static struct clk utmi_phy_clkout_ck = {
+	.name		= "utmi_phy_clkout_ck",
+	.ops		= &clkops_null,
+	.parent		= &dpll_usb_clkdcoldo_ck,
 	.recalc		= &followparent_recalc,
 };
 
@@ -2760,7 +2761,7 @@ static struct clk usb_otg_hs_ick = {
 	.enable_reg	= OMAP4430_CM_L3INIT_USB_OTG_CLKCTRL,
 	.enable_bit	= OMAP4430_MODULEMODE_HWCTRL,
 	.clkdm_name	= "l3_init_clkdm",
-	.parent		= &l3_div_ck,
+	.parent		= &otg_60m_gfclk,
 	.recalc		= &followparent_recalc,
 };
 
