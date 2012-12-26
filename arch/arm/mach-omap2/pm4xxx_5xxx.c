@@ -655,7 +655,7 @@ static void omap_default_idle(void)
 
 static inline int omap4_init_static_deps(void)
 {
-	struct clockdomain *l3_1_clkdm, *l4wkup;
+	struct clockdomain *l3_1_clkdm, *l4wkup, *l4_cfg_clkdm;
 	struct clockdomain *ducati_clkdm, *l3_2_clkdm, *l4_per_clkdm;
 	int ret = 0;
 	/*
@@ -675,8 +675,10 @@ static inline int omap4_init_static_deps(void)
 	l4_per_clkdm = clkdm_lookup("l4_per_clkdm");
 	l4wkup = clkdm_lookup("l4_wkup_clkdm");
 	ducati_clkdm = clkdm_lookup("ducati_clkdm");
+	l4_cfg_clkdm = clkdm_lookup("l4_cfg_clkdm");
 	if ((!mpuss_clkdm) || (!emif_clkdm) || (!l3_1_clkdm) || (!l4wkup) ||
-		(!l3_2_clkdm) || (!ducati_clkdm) || (!l4_per_clkdm))
+		(!l3_2_clkdm) || (!ducati_clkdm) || (!l4_per_clkdm) ||
+		(!l4_cfg_clkdm))
 		return -EINVAL;
 
 	/* if we cannot ever enable dynamic dependencies. */
@@ -687,11 +689,14 @@ static inline int omap4_init_static_deps(void)
 	ret |= clkdm_add_wkdep(mpuss_clkdm, l3_2_clkdm);
 	ret |= clkdm_add_wkdep(mpuss_clkdm, l4_per_clkdm);
 	ret |= clkdm_add_wkdep(mpuss_clkdm, l4wkup);
+	ret |= clkdm_add_wkdep(mpuss_clkdm, l4_cfg_clkdm);
 	ret |= clkdm_add_wkdep(ducati_clkdm, l3_1_clkdm);
 	ret |= clkdm_add_wkdep(ducati_clkdm, l3_2_clkdm);
+	ret |= clkdm_add_wkdep(ducati_clkdm, l4_per_clkdm);
+	ret |= clkdm_add_wkdep(ducati_clkdm, l4_cfg_clkdm);
 	if (ret) {
-		pr_err("Failed to add MPUSS -> L3/EMIF/L4PER, DUCATI -> L3 "
-				"wakeup dependency\n");
+		pr_err("Failed to add MPUSS -> L3/EMIF/L4PER/L4CFG, " \
+		       "DUCATI -> L3/L4PER/L4CFG wakeup dependency\n");
 	}
 
 	return ret;
