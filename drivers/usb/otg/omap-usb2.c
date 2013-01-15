@@ -183,6 +183,7 @@ static int __devinit omap_usb2_probe(struct platform_device *pdev)
 	phy->phy.label		= "omap-usb2";
 	phy->phy.set_suspend	= omap_usb2_suspend;
 	phy->phy.otg		= otg;
+	ATOMIC_INIT_NOTIFIER_HEAD(&phy->phy.notifier);
 
 	phy->control_dev	= omap_control_get();
 	if (IS_ERR(phy->control_dev)) {
