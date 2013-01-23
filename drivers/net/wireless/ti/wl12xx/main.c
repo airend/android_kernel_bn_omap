@@ -5487,7 +5487,6 @@ static int __devinit wl12xx_probe(struct platform_device *pdev)
 	wl->ref_clock = pdata->board_ref_clock;
 	wl->tcxo_clock = pdata->board_tcxo_clock;
 	wl->platform_quirks = pdata->platform_quirks;
-	wl->set_power = pdata->set_power;
 	wl->dev = &pdev->dev;
 	wl->if_ops = pdata->ops;
 
