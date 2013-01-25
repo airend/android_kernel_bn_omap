@@ -5469,7 +5469,8 @@ static irqreturn_t wl12xx_hardirq(int irq, void *cookie)
 
 static int __devinit wl12xx_probe(struct platform_device *pdev)
 {
-	struct wl12xx_platform_data *pdata = pdev->dev.platform_data;
+	struct wlcore_platdev_data *pdev_data = pdev->dev.platform_data;
+	struct wl12xx_platform_data *pdata = pdev_data->pdata;
 	struct ieee80211_hw *hw;
 	struct wl1271 *wl;
 	unsigned long irqflags;
@@ -5488,7 +5489,7 @@ static int __devinit wl12xx_probe(struct platform_device *pdev)
 	wl->tcxo_clock = pdata->board_tcxo_clock;
 	wl->platform_quirks = pdata->platform_quirks;
 	wl->dev = &pdev->dev;
-	wl->if_ops = pdata->ops;
+	wl->if_ops = pdev_data->if_ops;
 
 	platform_set_drvdata(pdev, wl);
 
