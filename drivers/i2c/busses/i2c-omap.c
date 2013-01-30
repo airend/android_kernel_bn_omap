@@ -499,7 +499,7 @@ static int omap_i2c_wait_for_bb(struct omap_i2c_dev *dev)
 /*
  * Bus Clear
  */
-static int omap_i2c_bus_clear(struct omap_i2c_dev *dev)
+static void omap_i2c_bus_clear(struct omap_i2c_dev *dev)
 {
 	u16 w;
 
@@ -518,7 +518,6 @@ static int omap_i2c_bus_clear(struct omap_i2c_dev *dev)
 	omap_i2c_write_reg(dev, OMAP_I2C_CON_REG, 0);
 	omap_i2c_reset(dev);
 	omap_i2c_init(dev);
-	return omap_i2c_wait_for_bb(dev);
 }
 
 /*
@@ -667,8 +666,12 @@ omap_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[], int num)
 	enable_irq(dev->irq);
 
 	r = omap_i2c_wait_for_bb(dev);
-	if (r < 0)
-		r = omap_i2c_bus_clear(dev);
+	if (r < 0) {
+		disable_irq(dev->irq);
+		omap_i2c_bus_clear(dev);
+		enable_irq(dev->irq);
+		r = omap_i2c_wait_for_bb(dev);
+	}
 	if (r < 0)
 		goto out;
 
