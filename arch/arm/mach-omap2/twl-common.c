@@ -683,6 +683,18 @@ static struct twl6030_thermal_data omap4_thermal_pdata = {
 	.hotdie_cfg = TWL6030_HOTDIE_130C,
 };
 
+static struct twl4030_resconfig twl6030_rconfig[] = {
+	{.resource = RES_VUSBCP, .devgroup = DEV_GRP_NULL,},
+	{.resource = TWL4030_RESCONFIG_UNDEF,},
+};
+
+static struct twl4030_resconfig twl6032_rconfig[] = {
+	{.resource = RES_LDOUSB, .devgroup = DEV_GRP_NULL,},
+	{.resource = TWL4030_RESCONFIG_UNDEF,},
+};
+
+static struct twl4030_power_data omap4_power_pdata;
+
 void __init omap4_pmic_get_config(struct twl4030_platform_data *pmic_data,
 				  u32 pdata_flags, u32 regulators_flags)
 {
@@ -703,6 +715,14 @@ void __init omap4_pmic_get_config(struct twl4030_platform_data *pmic_data,
 
 	if (pdata_flags & TWL_COMMON_PDATA_THERMAL && !pmic_data->thermal)
 		pmic_data->thermal = &omap4_thermal_pdata;
+
+	if (pdata_flags & TWL_COMMON_PDATA_POWER && !pmic_data->power) {
+		if (cpu_is_omap447x())
+			omap4_power_pdata.resource_config = twl6032_rconfig;
+		else
+			omap4_power_pdata.resource_config = twl6030_rconfig;
+		pmic_data->power = &omap4_power_pdata;
+	}
 
 	/* Common regulator configurations */
 	if (regulators_flags & TWL_COMMON_REGULATOR_VDAC) {

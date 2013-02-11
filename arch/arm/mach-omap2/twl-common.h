@@ -12,6 +12,7 @@
 #define TWL_COMMON_PDATA_MADC		(1 << 2)
 #define TWL_COMMON_PDATA_AUDIO		(1 << 3)
 #define TWL_COMMON_PDATA_THERMAL	(1 << 4)
+#define TWL_COMMON_PDATA_POWER		(1 << 5)
 
 /* Common LDO regulators for TWL4030/TWL6030/TWL6032 */
 /* LDOLN for TWL6032 */
