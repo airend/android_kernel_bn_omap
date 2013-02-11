@@ -302,11 +302,12 @@ static int twl6030reg_disable(struct regulator_dev *rdev)
 	int			ret;
 
 	if (!(twl_class_is_6030() && (info->features & TWL6032_SUBCLASS)))
-		grp = P1_GRP_6030 | P2_GRP_6030 | P3_GRP_6030;
+		grp = twlreg_read(info, TWL_MODULE_PM_RECEIVER, VREG_GRP);
+	if (grp < 0)
+		return grp;
 
-	/* For 6030, set the off state for all grps enabled */
 	ret = twlreg_write(info, TWL_MODULE_PM_RECEIVER, VREG_STATE,
-			(grp) << TWL6030_CFG_STATE_GRP_SHIFT |
+			grp << TWL6030_CFG_STATE_GRP_SHIFT |
 			TWL6030_CFG_STATE_OFF);
 
 	/* Ensure it remains OFF when we enter suspend (TWL6030 in sleep). */
