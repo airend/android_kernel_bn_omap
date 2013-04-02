@@ -146,6 +146,21 @@ static struct usb_descriptor_header *ss_adb_descs[] = {
 	NULL,
 };
 
+static struct usb_string adb_string_defs[] = {
+	[0].s	= "Android Debug Bridge",
+	{  },	/* end of list */
+};
+
+static struct usb_gadget_strings adb_string_table = {
+	.language		= 0x0409,	/* en-US */
+	.strings		= adb_string_defs,
+};
+
+static struct usb_gadget_strings *adb_strings[] = {
+	&adb_string_table,
+	NULL,
+};
+
 static void adb_ready_callback(void);
 static void adb_closed_callback(void);
 
@@ -617,6 +632,7 @@ static int adb_bind_config(struct usb_configuration *c)
 
 	dev->cdev = c->cdev;
 	dev->function.name = "adb";
+	dev->function.strings=adb_strings;
 	dev->function.descriptors = fs_adb_descs;
 	dev->function.hs_descriptors = hs_adb_descs;
 	dev->function.ss_descriptors = ss_adb_descs;
