@@ -124,6 +124,8 @@ struct twl6030_usb {
 	struct wake_lock	charger_det_lock;
 };
 
+static int twl6030_force_usb_id = 0;
+
 static BLOCKING_NOTIFIER_HEAD(notifier_list);
 
 #define	comparator_to_twl(x) container_of((x), struct twl6030_usb, comparator)
@@ -259,6 +261,9 @@ static irqreturn_t twl6030_usb_irq(int irq, void *_twl)
 
 	hw_state = twl6030_readb(twl, TWL6030_MODULE_ID0, STS_HW_CONDITIONS);
 
+	if (twl6030_force_usb_id)
+		hw_state |= STS_USB_ID;
+
 	vbus_state = twl6030_readb(twl, TWL_MODULE_MAIN_CHARGE,
 						CONTROLLER_STAT1);
 	if (!(hw_state & STS_USB_ID)) {
@@ -311,6 +316,9 @@ static irqreturn_t twl6030_usbotg_irq(int irq, void *_twl)
 	u8 hw_state;
 
 	hw_state = twl6030_readb(twl, TWL6030_MODULE_ID0, STS_HW_CONDITIONS);
+
+	if (twl6030_force_usb_id)
+		hw_state |= STS_USB_ID;
 
 	if (hw_state & STS_USB_ID) {
 		if (twl->prev_status == OMAP_MUSB_ID_GROUND)
@@ -373,6 +381,37 @@ static int twl6030_enable_irq(struct twl6030_usb *twl)
 
 	return 0;
 }
+
+static ssize_t twl6030_usb_id_show(struct device *dev,
+			struct device_attribute *attr, char *buf)
+{
+	int ret = -EINVAL;
+
+	ret = snprintf(buf, PAGE_SIZE, "%sable\n",
+		       twl6030_force_usb_id?"en":"dis");
+
+	return ret;
+}
+
+static ssize_t twl6030_usb_id_store(struct device *dev,
+			struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct twl6030_usb *twl = dev_get_drvdata(dev);
+
+	if (!strncmp(buf, "enable", 6)) {
+		twl6030_force_usb_id = 1;
+	} else if (!strncmp(buf, "disable", 7)) {
+		twl6030_force_usb_id = 0;
+	} else {
+		return -EINVAL;
+	}
+
+	twl6030_usbotg_irq(twl->irq1, twl);
+
+	return count;
+}
+
+static DEVICE_ATTR(usb_id, 0644, twl6030_usb_id_show, twl6030_usb_id_store);
 
 static void otg_set_vbus_work(struct work_struct *data)
 {
@@ -461,6 +500,9 @@ static int __devinit twl6030_usb_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, twl);
 	if (device_create_file(&pdev->dev, &dev_attr_vbus))
+		dev_warn(&pdev->dev, "could not create sysfs file\n");
+
+	if (device_create_file(&pdev->dev, &dev_attr_usb_id))
 		dev_warn(&pdev->dev, "could not create sysfs file\n");
 
 	INIT_WORK(&twl->set_vbus_work, otg_set_vbus_work);
