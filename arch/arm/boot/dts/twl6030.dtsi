@@ -100,6 +100,11 @@
 		#pwm-cells = <2>;
 	};
 
+	twl_pwrbutton: pwrbutton {
+		compatible = "ti,twl6030-pwrbutton";
+		interrupts = <0>;
+	};
+
 	gpadc {
 		compatible = "ti,twl6030-gpadc";
 		interrupts = <3>;
