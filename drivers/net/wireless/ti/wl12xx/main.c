@@ -5467,6 +5467,40 @@ static irqreturn_t wl12xx_hardirq(int irq, void *cookie)
 	return IRQ_WAKE_THREAD;
 }
 
+static const struct wl12xx_clock wl12xx_refclock_table[] = {
+	{ 19200000,	false,	WL12XX_REFCLOCK_19	},
+	{ 26000000,	false,	WL12XX_REFCLOCK_26	},
+	{ 26000000,	true,	WL12XX_REFCLOCK_26_XTAL	},
+	{ 38400000,	false,	WL12XX_REFCLOCK_38	},
+	{ 38400000,	true,	WL12XX_REFCLOCK_38_XTAL	},
+	{ 52000000,	false,	WL12XX_REFCLOCK_52	},
+	{ 0,		false,	0 }
+};
+
+static const struct wl12xx_clock wl12xx_tcxoclock_table[] = {
+	{ 16368000,	true,	WL12XX_TCXOCLOCK_16_368	},
+	{ 16800000,	true,	WL12XX_TCXOCLOCK_16_8	},
+	{ 19200000,	true,	WL12XX_TCXOCLOCK_19_2	},
+	{ 26000000,	true,	WL12XX_TCXOCLOCK_26	},
+	{ 32736000,	true,	WL12XX_TCXOCLOCK_32_736	},
+	{ 33600000,	true,	WL12XX_TCXOCLOCK_33_6	},
+	{ 38400000,	true,	WL12XX_TCXOCLOCK_38_4	},
+	{ 52000000,	true,	WL12XX_TCXOCLOCK_52	},
+	{ 0,		false,	0 }
+};
+
+static int wl12xx_get_clock_idx(const struct wl12xx_clock *table,
+				u32 freq, bool xtal)
+{
+	int i;
+
+	for (i = 0; table[i].freq != 0; i++)
+		if ((table[i].freq == freq) && (table[i].xtal == xtal))
+			return table[i].hw_idx;
+
+	return -EINVAL;
+}
+
 static int __devinit wl12xx_probe(struct platform_device *pdev)
 {
 	struct wlcore_platdev_data *pdev_data = pdev->dev.platform_data;
@@ -5484,8 +5518,26 @@ static int __devinit wl12xx_probe(struct platform_device *pdev)
 	}
 
 	wl = hw->priv;
-	wl->ref_clock = pdata->board_ref_clock;
-	wl->tcxo_clock = pdata->board_tcxo_clock;
+	wl->ref_clock = wl12xx_get_clock_idx(wl12xx_refclock_table,
+						   pdata->ref_clock_freq,
+						   pdata->ref_clock_xtal);
+	if (wl->ref_clock < 0) {
+		wl1271_error("Invalid ref_clock frequency (%d Hz, %s)",
+				 pdata->ref_clock_freq,
+				 pdata->ref_clock_xtal ?
+				 "XTAL" : "not XTAL");
+
+		return wl->ref_clock;
+	}
+	wl->tcxo_clock = wl12xx_get_clock_idx(wl12xx_tcxoclock_table,
+						pdata->tcxo_clock_freq,
+						true);
+	if (wl->tcxo_clock < 0) {
+		wl1271_error("Invalid tcxo_clock frequency (%d Hz)",
+				 pdata->tcxo_clock_freq);
+
+		return wl->tcxo_clock;
+	}
 	wl->dev = &pdev->dev;
 	wl->if_ops = pdev_data->if_ops;
 
