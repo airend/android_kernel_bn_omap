@@ -308,6 +308,7 @@ struct wl1271 {
 	struct wl1271_if_operations *if_ops;
 
 	int irq;
+	int irq_flags;
 	int ref_clock;
 
 	spinlock_t wl_lock;
@@ -487,9 +488,6 @@ struct wl1271 {
 
 	/* Quirks of specific hardware revisions */
 	unsigned int quirks;
-
-	/* Platform limitations */
-	unsigned int platform_quirks;
 
 	/* number of currently active RX BA sessions */
 	int ba_rx_session_count;

@@ -34,6 +34,7 @@
 #include <linux/wl12xx.h>
 #include <linux/sched.h>
 #include <linux/interrupt.h>
+#include <linux/irq.h>
 
 #include "wl12xx.h"
 #include "debug.h"
@@ -903,7 +904,7 @@ static irqreturn_t wl1271_irq(int irq, void *cookie)
 	 * In case edge triggered interrupt must be used, we cannot iterate
 	 * more than once without introducing race conditions with the hardirq.
 	 */
-	if (wl->platform_quirks & WL12XX_PLATFORM_QUIRK_EDGE_IRQ)
+	if (wl->irq_flags & (IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING))
 		loopcount = 1;
 
 	mutex_lock(&wl->mutex);
@@ -5339,7 +5340,6 @@ static struct ieee80211_hw *wl1271_alloc_hw(void)
 	wl->ap_ps_map = 0;
 	wl->ap_fw_ps_map = 0;
 	wl->quirks = 0;
-	wl->platform_quirks = 0;
 	wl->sched_scanning = false;
 	wl->tx_spare_blocks = TX_HW_BLOCK_SPARE_DEFAULT;
 	wl->system_hlid = WL12XX_SYSTEM_HLID;
@@ -5473,7 +5473,7 @@ static int __devinit wl12xx_probe(struct platform_device *pdev)
 	struct wl12xx_platform_data *pdata = pdev_data->pdata;
 	struct ieee80211_hw *hw;
 	struct wl1271 *wl;
-	unsigned long irqflags;
+	struct resource *res;
 	int ret = -ENODEV;
 
 	hw = wl1271_alloc_hw();
@@ -5484,22 +5484,27 @@ static int __devinit wl12xx_probe(struct platform_device *pdev)
 	}
 
 	wl = hw->priv;
-	wl->irq = platform_get_irq(pdev, 0);
 	wl->ref_clock = pdata->board_ref_clock;
 	wl->tcxo_clock = pdata->board_tcxo_clock;
-	wl->platform_quirks = pdata->platform_quirks;
 	wl->dev = &pdev->dev;
 	wl->if_ops = pdev_data->if_ops;
 
+	res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
+	if (!res) {
+		wl1271_error("Could not get IRQ resource");
+		goto out_free_hw;
+	}
+
+	wl->irq = res->start;
+	wl->irq_flags = res->flags & IRQF_TRIGGER_MASK;
+
+	if (!(wl->irq_flags & (IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING)))
+		wl->irq_flags |= IRQF_ONESHOT;
+
 	platform_set_drvdata(pdev, wl);
 
-	if (wl->platform_quirks & WL12XX_PLATFORM_QUIRK_EDGE_IRQ)
-		irqflags = IRQF_TRIGGER_RISING;
-	else
-		irqflags = IRQF_TRIGGER_HIGH | IRQF_ONESHOT;
-
 	ret = request_threaded_irq(wl->irq, wl12xx_hardirq, wl1271_irq,
-				   irqflags,
+				   wl->irq_flags,
 				   pdev->name, wl);
 	if (ret < 0) {
 		wl1271_error("request_irq() failed: %d", ret);
