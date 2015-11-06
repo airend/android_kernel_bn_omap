@@ -95,8 +95,8 @@ static struct platform_device omap4plus_vwlan_device = {
 };
 
 static struct wl12xx_platform_data omap4plus_wlan_data __initdata = {
-	.board_ref_clock    = WL12XX_REFCLOCK_26,
-	.board_tcxo_clock   = WL12XX_TCXOCLOCK_26,
+	.ref_clock_freq    = 26000000,
+	.tcxo_clock_freq   = 26000000,
 };
 
 static void

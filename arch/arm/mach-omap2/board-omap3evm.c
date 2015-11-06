@@ -478,7 +478,7 @@ static struct platform_device omap3evm_wlan_regulator = {
 };
 
 struct wl12xx_platform_data omap3evm_wlan_data __initdata = {
-	.board_ref_clock = WL12XX_REFCLOCK_38, /* 38.4 MHz */
+	.ref_clock_freq = 38400000, /* 38.4 MHz */
 };
 #endif
 
