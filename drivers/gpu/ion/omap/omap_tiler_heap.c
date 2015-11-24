@@ -169,12 +169,9 @@ int omap_tiler_alloc(struct ion_heap *heap,
 	struct ion_handle *handle;
 	struct ion_buffer *buffer;
 	struct sg_table *sg_table;
-	struct omap_tiler_info *info = NULL;
+	struct omap_tiler_info *info;
 	u32 n_phys_pages;
 	u32 n_tiler_pages;
-	u32 tiler_start = 0;
-	u32 v_size;
-	tiler_blk_handle tiler_handle;
 	int ret;
 
 	if (data->fmt == TILER_PIXEL_FMT_PAGE && data->h != 1) {
@@ -195,46 +192,37 @@ int omap_tiler_alloc(struct ion_heap *heap,
 
 	BUG_ON(!n_phys_pages || !n_tiler_pages);
 
-	if( (TILER_ENABLE_NON_PAGE_ALIGNED_ALLOCATIONS)
-			&& (data->token != 0) ) {
-		tiler_handle = tiler_alloc_block_area_aligned(data->fmt, data->w, data->h,
-									    &tiler_start,
-									    NULL,
-									    data->out_align,
-									    data->offset,
-									    data->token);
-	} else {
-		tiler_handle = tiler_alloc_block_area(data->fmt, data->w, data->h,
-							    &tiler_start,
-							    NULL);
-	}
-
-	if (IS_ERR_OR_NULL(tiler_handle)) {
-		ret = PTR_ERR(tiler_handle);
-		pr_err("%s: failure to allocate address space from tiler\n",
-		       __func__);
-		goto err_nomem;
-	}
-
-	v_size = tiler_block_vsize(tiler_handle);
-
-	if(!v_size)
-		goto err_alloc;
-
-	n_tiler_pages = (PAGE_ALIGN(v_size) / PAGE_SIZE);
-
 	info = kzalloc(sizeof(struct omap_tiler_info) +
 		       sizeof(u32) * n_phys_pages +
 		       sizeof(u32) * n_tiler_pages, GFP_KERNEL);
 	if (!info)
-		goto err_alloc;
+		return -ENOMEM;
 
-	info->tiler_handle = tiler_handle;
-	info->tiler_start = tiler_start;
 	info->n_phys_pages = n_phys_pages;
 	info->n_tiler_pages = n_tiler_pages;
 	info->phys_addrs = (u32 *)(info + 1);
 	info->tiler_addrs = info->phys_addrs + n_phys_pages;
+
+	if( (TILER_ENABLE_NON_PAGE_ALIGNED_ALLOCATIONS)
+			&& (data->token != 0) ) {
+		info->tiler_handle = tiler_alloc_block_area_aligned(data->fmt, data->w, data->h,
+									    &info->tiler_start,
+									    info->tiler_addrs,
+									    data->out_align,
+									    data->offset,
+									    data->token);
+	} else {
+		info->tiler_handle = tiler_alloc_block_area(data->fmt, data->w, data->h,
+							    &info->tiler_start,
+							    info->tiler_addrs);
+	}
+
+	if (IS_ERR_OR_NULL(info->tiler_handle)) {
+		ret = PTR_ERR(info->tiler_handle);
+		pr_err("%s: failure to allocate address space from tiler\n",
+		       __func__);
+		goto err_nomem;
+	}
 
 	if ((heap->id == OMAP_ION_HEAP_TILER) ||
 	    (heap->id == OMAP_ION_HEAP_NONSECURE_TILER)) {
@@ -266,7 +254,7 @@ int omap_tiler_alloc(struct ion_heap *heap,
 	}
 
 	buffer = ion_handle_buffer(handle);
-	buffer->size = v_size;
+	buffer->size = info->n_tiler_pages * PAGE_SIZE;
 	buffer->priv_virt = info;
 	sg_table = omap_tiler_map_dma(info, buffer);
 	if (IS_ERR(sg_table))
@@ -274,12 +262,6 @@ int omap_tiler_alloc(struct ion_heap *heap,
 	buffer->sg_table = sg_table;
 	data->handle = handle;
 	data->offset = (size_t)(info->tiler_start & ~PAGE_MASK);
-
-	if(tiler_fill_virt_array(tiler_handle, info->tiler_addrs,
-			&n_tiler_pages) < 0) {
-		pr_err("%s: failure filling tiler's virtual array %d\n",
-				__func__, n_tiler_pages);
-	}
 
 	return 0;
 
@@ -291,7 +273,7 @@ err_pin:
 		omap_tiler_free_carveout(heap, info);
 	}
 err_alloc:
-	tiler_free_block_area(tiler_handle);
+	tiler_free_block_area(info->tiler_handle);
 err_nomem:
 	kfree(info);
 	return ret;
