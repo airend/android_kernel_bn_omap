@@ -26,6 +26,8 @@
 #include <linux/module.h>
 
 struct ion_device *omap_ion_device;
+EXPORT_SYMBOL(omap_ion_device);
+
 int num_heaps;
 struct ion_heap **heaps;
 struct ion_heap *tiler_heap;
