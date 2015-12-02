@@ -530,7 +530,7 @@ long rpmsg_omx_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			unsigned int size = ARRAY_SIZE(data.handles);
 			for (i = 0; (i < num_handles) && (i < size); i++) {
 				if (IS_ERR_OR_NULL(ion_handles[i]))
-					continue;
+					break;
 
 				if (_is_page_list(omx, ion_handles[i]))
 					data.handles[i] = (void *)
