@@ -835,7 +835,7 @@ static void __init omap4_panda_reserve(void)
 	omap_init_ram_size();
 
 #ifdef CONFIG_ION_OMAP
-	omap_ion_init();
+	omap4_ion_init();
 #endif
 
 	omap_ram_console_init(OMAP_RAM_CONSOLE_START_DEFAULT,

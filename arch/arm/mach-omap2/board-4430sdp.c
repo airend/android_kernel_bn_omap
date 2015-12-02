@@ -1246,7 +1246,7 @@ static void __init omap_4430sdp_reserve(void)
 				   NULL,
 				   &blaze_fb_pdata,
 				   get_omap_ion_platform_data());
-	omap_ion_init();
+	omap4_ion_init();
 #else
 	omap_android_display_setup(&sdp4430_dss_data,
 				   NULL,

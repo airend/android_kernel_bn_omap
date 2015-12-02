@@ -1533,7 +1533,7 @@ static void __init acclaim_reserve(void)
 				   NULL,
 				   &acclaim_fb_pdata,
 				   ion);
-	omap_ion_init();
+	omap4_ion_init();
 #else
 	omap_android_display_setup(&acclaim_dss_data,
 				   NULL,
