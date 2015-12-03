@@ -1525,8 +1525,8 @@ static void __init acclaim_reserve(void)
 	struct omap_ion_platform_data *ion = get_omap_ion_platform_data();
 
 	ion->tiler1d_size = (SZ_1M * 90);
-	ion->secure_output_wfdhdcp_size = (SZ_1M * 16);
-	ion->ducati_heap_size = (SZ_1M * 105);
+	//ion->secure_output_wfdhdcp_size = (SZ_1M * 16);
+	ion->ducati_heap_size = (SZ_1M * 121);
 
 	omap_android_display_setup(&acclaim_dss_data,
 				   NULL,
@@ -1552,8 +1552,7 @@ static void __init acclaim_reserve(void)
 	/* ipu needs to recognize secure input buffer area as well */
 	omap_ipu_set_static_mempool(PHYS_ADDR_DUCATI_MEM,
 				    PHYS_ADDR_DUCATI_SIZE +
-				    OMAP4_ION_HEAP_SECURE_INPUT_SIZE +
-				    OMAP4_ION_HEAP_SECURE_OUTPUT_WFDHDCP_SIZE);
+				    OMAP4_ION_HEAP_SECURE_INPUT_SIZE);
 
 	omap_reserve();
 }
