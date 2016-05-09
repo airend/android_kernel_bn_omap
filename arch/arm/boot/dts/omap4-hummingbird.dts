@@ -8,7 +8,7 @@
 /dts-v1/;
 
 #include "omap4470.dtsi"
-#include "elpida_ecb240abacn.dtsi"
+#include "elpida_bn.dtsi"
 
 / {
 	model = "B&N Nook HD (hummingbird)";
@@ -328,12 +328,12 @@
 
 &emif1 {
 	//cs1-used;
-	device-handle = <&elpida_ECB240ABACN>;
+	device-handle = <&elpida_BN>;
 };
 
 &emif2 {
 	//cs1-used;
-	device-handle = <&elpida_ECB240ABACN>;
+	device-handle = <&elpida_BN>;
 };
 
 &uart1 {
