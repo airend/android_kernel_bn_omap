@@ -1522,11 +1522,17 @@ static void __init acclaim_reserve(void)
 	omap_init_ram_size();
 
 #ifdef CONFIG_ION_OMAP
+	struct omap_ion_platform_data *ion = get_omap_ion_platform_data();
+
+	ion->tiler1d_size = (SZ_1M * 90);
+	ion->secure_output_wfdhdcp_size = (SZ_1M * 16);
+	ion->ducati_heap_size = (SZ_1M * 105);
+
 	omap_android_display_setup(&acclaim_dss_data,
 				   NULL,
 				   NULL,
 				   &acclaim_fb_pdata,
-				   get_omap_ion_platform_data());
+				   ion);
 	omap_ion_init();
 #else
 	omap_android_display_setup(&acclaim_dss_data,
