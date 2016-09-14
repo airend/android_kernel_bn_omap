@@ -105,16 +105,16 @@ void __init omap4_ion_init(void)
 	/* carveout sizes */
 	omap4_smc_size = (SZ_1M * 3);
 
+	omap4_ion_heap_secure_input_size = 0;
 	omap4_ion_heap_nonsec_tiler_mem_size = 0;
 	omap4_ion_heap_tiler_mem_size = 0;
 
 	if (system_512m) {
-		omap4_ion_heap_secure_input_size = 0;
 		omap4_ducati_heap_size = (SZ_1M * 83);
 	} else {
-		omap4_ion_heap_secure_input_size = omap4_ion_pdata.tiler1d_size;
 		omap4_ducati_heap_size = omap4_ion_pdata.ducati_heap_size;
 #ifndef CONFIG_ION_OMAP_TILER_DYNAMIC_ALLOC
+		omap4_ion_heap_secure_input_size = omap4_ion_pdata.tiler1d_size;
 		omap4_ion_heap_nonsec_tiler_mem_size =
 				omap4_ion_pdata.nonsecure_tiler2d_size;
 		omap4_ion_heap_tiler_mem_size = omap4_ion_pdata.tiler2d_size;
