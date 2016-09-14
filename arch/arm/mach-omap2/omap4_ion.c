@@ -128,6 +128,9 @@ void __init omap4_ion_init(void)
 				omap4_ion_heap_secure_input_size;
 	omap4_ducati_heap_addr = omap4_ion_heap_secure_input_addr -
 				omap4_ducati_heap_size;
+#ifdef CONFIG_ION_OMAP_TILER_DYNAMIC_ALLOC
+	omap4_ducati_heap_addr -= omap4_ion_pdata.tiler1d_size;
+#endif
 	omap4_ion_heap_tiler_mem_addr = omap4_ducati_heap_addr -
 				omap4_ion_heap_tiler_mem_size;
 	omap4_ion_heap_nonsec_tiler_mem_addr = omap4_ion_heap_tiler_mem_addr -
