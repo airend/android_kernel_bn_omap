@@ -249,6 +249,10 @@ static ssize_t twl6030_usb_vbus_show(struct device *dev,
 }
 static DEVICE_ATTR(vbus, 0444, twl6030_usb_vbus_show, NULL);
 
+static int twl6030_status = USB_EVENT_NONE;
+inline int twl6030_usbotg_get_status() { return twl6030_status; }
+EXPORT_SYMBOL(twl6030_usbotg_get_status);
+
 static irqreturn_t twl6030_usb_irq(int irq, void *_twl)
 {
 	struct twl6030_usb *twl = _twl;
@@ -284,6 +288,7 @@ static irqreturn_t twl6030_usb_irq(int irq, void *_twl)
 				status = OMAP_MUSB_ID_FLOAT;
 			}
 			twl->asleep = 1;
+			twl6030_status = event;
 			omap_musb_mailbox(status);
 			blocking_notifier_call_chain(&notifier_list,
 						     event, &charger_type);
@@ -294,6 +299,7 @@ static irqreturn_t twl6030_usb_irq(int irq, void *_twl)
 					return IRQ_HANDLED;
 				status = OMAP_MUSB_VBUS_OFF;
 				event = USB_EVENT_NONE;
+				twl6030_status = event;
 				omap_musb_mailbox(status);
 				blocking_notifier_call_chain(&notifier_list,
 							     event,
@@ -330,6 +336,7 @@ static irqreturn_t twl6030_usbotg_irq(int irq, void *_twl)
 		twl6030_writeb(twl, TWL_MODULE_USB, 0x1, USB_ID_INT_EN_HI_CLR);
 		twl6030_writeb(twl, TWL_MODULE_USB, 0x10, USB_ID_INT_EN_HI_SET);
 		omap_musb_mailbox(OMAP_MUSB_ID_GROUND);
+		twl6030_status = USB_EVENT_ID;
 		/*
 		 * NOTE:
 		 * This code is needed because if ID pin
