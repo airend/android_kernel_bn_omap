@@ -372,6 +372,14 @@ static int orise_power_on(struct omap_dss_device *dssdev)
 	voltage. From the next time suspend will help doing this */
 
 	if (!dssdev->skip_init) {
+		msleep(1);
+		r = dsi_vc_turn_on_peripheral(dssdev, d2d->channel0);
+		msleep(1);
+
+		if (r) {
+			dev_err(&dssdev->dev, "turn on peripheral failed: %d", r);
+		}
+
 		/* do extra job to match kozio registers (???) */
 		dsi_videomode_panel_preinit(dssdev);
 		msleep(1);
