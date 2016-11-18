@@ -139,6 +139,12 @@
 		#cooling-cells = <2>;
 	};
 
+	gpu-subsystem {
+		compatible = "ti,gc320-gpu-subsystem";
+		cores = <&bb2d>;
+		status = "okay";
+	};
+
 	hdmi0: connector {
 		compatible = "hdmi-connector";
 		label = "hdmi";
