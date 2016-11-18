@@ -8,6 +8,7 @@ Required properties:
 - compatible: Should be one of
     "fsl,imx-gpu-subsystem"
     "marvell,dove-gpu-subsystem"
+    "ti,gc320-gpu-subsystem"
 - cores: Should contain a list of phandles pointing to Vivante GPU devices
 
 example:
