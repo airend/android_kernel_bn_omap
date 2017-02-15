@@ -123,7 +123,7 @@ static void evdev_event(struct input_handle *handle,
 	if (evdev->hw_ts_sec != -1 && evdev->hw_ts_nsec != -1)
 		time_mono = ktime_set(evdev->hw_ts_sec, evdev->hw_ts_nsec);
 	else
-		time_mono = ktime_get_boottime();
+		time_mono = ktime_get();
 
 	time_real = ktime_sub(time_mono, ktime_get_monotonic_offset());
 
