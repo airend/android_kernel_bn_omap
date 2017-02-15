@@ -634,7 +634,7 @@ static __devinit int omap_mcasp_probe(struct platform_device *pdev)
 	}
 
 	ret = request_threaded_irq(mcasp->irq, NULL, omap_mcasp_irq_handler,
-				0, "McASP", mcasp);
+				IRQF_ONESHOT, "McASP", mcasp);
 	if (ret) {
 		dev_err(mcasp->dev, "IRQ request failed\n");
 		goto err_irq;
