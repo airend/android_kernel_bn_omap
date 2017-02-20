@@ -600,8 +600,8 @@ static int __devinit kxtj9_probe(struct i2c_client *client,
 			goto err_pdata_exit;
 
 		err = request_threaded_irq(client->irq, NULL, kxtj9_isr,
-					   pdata->int_flags ? pdata->int_flags :
-					   IRQF_TRIGGER_RISING | IRQF_ONESHOT,
+					   (pdata->int_flags ? pdata->int_flags :
+					   IRQF_TRIGGER_RISING) | IRQF_ONESHOT,
 					   "kxtj9-irq", tj9);
 		if (err) {
 			dev_err(&client->dev, "request irq failed: %d\n", err);
