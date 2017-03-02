@@ -82,6 +82,8 @@
 #define BQ27000_RS			20 /* Resistor sense */
 #define BQ27x00_POWER_CONSTANT		(256 * 29200 / 1000)
 
+#define BQ27x00_REG_BUFFER_SIZE	(BQ27500_REG_SOC - BQ27x00_REG_TEMP + 1 + sizeof(char))
+
 /*
  * bq27530 controls bq24160 charger by its own dedicated i2c bus
  * The charger registers are mapped to a series of single byte
@@ -136,6 +138,9 @@ struct bq27x00_device_info {
 
 	struct bq27x00_reg_cache cache;
 	int charge_design_full;
+
+	struct rw_semaphore	bulk_reg_cache_lock;
+	uint8_t bulk_reg_cache[BQ27x00_REG_BUFFER_SIZE];
 
 	unsigned long last_update;
 	struct workqueue_struct *wq;
@@ -206,10 +211,46 @@ int twl6030_usb_unregister_notifier(struct notifier_block *nb);
  * Common code for BQ27x00 devices
  */
 
-static inline int bq27x00_read(struct bq27x00_device_info *di, u8 reg,
+static inline int bq27x00_register_uncached_read(struct bq27x00_device_info *di, u8 reg,
 		bool single)
 {
 	return di->bus.read(di, reg, single);
+}
+
+static int bq27x00_register_cached_read(struct bq27x00_device_info *di, u8 reg,
+		bool single)
+{
+	int res = 0;
+	struct i2c_client *const client = to_i2c_client(di->dev);
+
+	if (unlikely(reg < BQ27x00_REG_TEMP || reg > BQ27500_REG_SOC)) {
+		dev_err(di->dev,
+			"error reading cache register out of bound: reg=%d\n", reg);
+		return -EFAULT;
+	}
+
+	if (unlikely(!client->adapter))
+		return -ENODEV;
+
+	reg -= BQ27x00_REG_TEMP;
+
+	down_read(&di->bulk_reg_cache_lock);
+
+	res = di->bulk_reg_cache[reg];
+	if (!single)
+		res += (di->bulk_reg_cache[reg + 1] << 8);
+
+	dev_dbg(di->dev, "reg = 0x%x, res = %d\n", reg, res);
+
+	up_read(&di->bulk_reg_cache_lock);
+
+	return res;
+}
+
+static inline int bq27x00_read(struct bq27x00_device_info *di, u8 reg,
+		bool single)
+{
+	return bq27x00_register_cached_read(di, reg, single);
 }
 
 static inline int bq27x00_write(struct bq27x00_device_info *di, u8 reg,
@@ -287,9 +328,9 @@ static int bq27x00_battery_read_ilmd(struct bq27x00_device_info *di)
 	int ilmd;
 
 	if ((di->chip == BQ27500) || (di->chip == BQ27530))
-		ilmd = bq27x00_read(di, BQ27500_REG_DCAP, false);
+		ilmd = bq27x00_register_uncached_read(di, BQ27500_REG_DCAP, false);
 	else
-		ilmd = bq27x00_read(di, BQ27000_REG_ILMD, true);
+		ilmd = bq27x00_register_uncached_read(di, BQ27000_REG_ILMD, true);
 
 	if (ilmd < 0) {
 		dev_dbg(di->dev, "error reading initial last measured discharge\n");
@@ -438,11 +479,22 @@ static int bq27x00_battery_read_health(struct bq27x00_device_info *di)
 	return -1;
 }
 
+#ifdef CONFIG_BATTERY_BQ27X00_I2C
+static int bq27x00_register_bulk_cache(struct bq27x00_device_info *di);
+#else
+static inline int bq27x00_register_bulk_cache(struct bq27x00_device_info *di)
+{
+	return 0;
+}
+#endif
+
 static void bq27x00_update(struct bq27x00_device_info *di)
 {
 	struct bq27x00_reg_cache cache = {0, };
 	bool is_bq27500 = di->chip == BQ27500;
 	bool is_bq27530 = di->chip == BQ27530;
+
+	bq27x00_register_bulk_cache(di);
 
 	cache.flags = bq27x00_read(di, BQ27x00_REG_FLAGS, !(is_bq27500 || is_bq27530));
 	if (cache.flags >= 0) {
@@ -503,12 +555,13 @@ static void bq27x00_battery_poll(struct work_struct *work)
  * Or 0 if something fails.
  */
 static int bq27x00_battery_current(struct bq27x00_device_info *di,
-	union power_supply_propval *val)
+	union power_supply_propval *val, bool cached)
 {
 	int curr;
 	int flags;
 
-	curr = bq27x00_read(di, BQ27x00_REG_AI, false);
+	curr = (cached ? bq27x00_read(di, BQ27x00_REG_AI, false) :
+			bq27x00_register_uncached_read(di, BQ27x00_REG_AI, false));
 	if (curr < 0) {
 		dev_err(di->dev, "error reading current\n");
 		return curr;
@@ -518,7 +571,8 @@ static int bq27x00_battery_current(struct bq27x00_device_info *di,
 		/* bq27500 returns signed value */
 		val->intval = (int)((s16)curr) * 1000;
 	} else {
-		flags = bq27x00_read(di, BQ27x00_REG_FLAGS, false);
+		flags = (cached ? bq27x00_read(di, BQ27x00_REG_FLAGS, false) :
+				bq27x00_register_uncached_read(di, BQ27x00_REG_FLAGS, false));
 		if (flags & BQ27000_FLAG_CHGS) {
 			dev_dbg(di->dev, "negative current!\n");
 			curr = -curr;
@@ -593,11 +647,12 @@ static int bq27x00_battery_capacity_level(struct bq27x00_device_info *di,
  * Or < 0 if something fails.
  */
 static int bq27x00_battery_voltage(struct bq27x00_device_info *di,
-	union power_supply_propval *val)
+	union power_supply_propval *val, bool cached)
 {
 	int volt;
 
-	volt = bq27x00_read(di, BQ27x00_REG_VOLT, false);
+	volt = (cached ? bq27x00_read(di, BQ27x00_REG_VOLT, false) :
+			bq27x00_register_uncached_read(di, BQ27x00_REG_VOLT, false));
 	if (volt < 0) {
 		dev_err(di->dev, "error reading voltage\n");
 		return volt;
@@ -644,13 +699,13 @@ static int bq27x00_battery_get_property(struct power_supply *psy,
 		ret = bq27x00_battery_status(di, val);
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
-		ret = bq27x00_battery_voltage(di, val);
+		ret = bq27x00_battery_voltage(di, val, true);
 		break;
 	case POWER_SUPPLY_PROP_PRESENT:
 		val->intval = di->cache.flags < 0 ? 0 : 1;
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
-		ret = bq27x00_battery_current(di, val);
+		ret = bq27x00_battery_current(di, val, true);
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
 		ret = bq27x00_simple_value(di->cache.capacity, val);
@@ -727,11 +782,11 @@ static int bq27x00_ac_get_property(struct power_supply *psy,
 	struct bq27x00_device_info *di =
 		container_of(psy, struct bq27x00_device_info, ac);
 	u8 value = (di->chip == BQ27530) ?
-		bq27x00_read(di, BQ24160_CHRGR_CTL_STAT_REG, false) & STAT_MASK : STAT_0;
+		bq27x00_register_uncached_read(di, BQ24160_CHRGR_CTL_STAT_REG, false) & STAT_MASK : STAT_0;
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
-		ret = bq27x00_battery_voltage(di, val);
+		ret = bq27x00_battery_voltage(di, val, false);
 		break;
 	case POWER_SUPPLY_PROP_ONLINE:
 		ret = bq27x00_battery_status(di, val);
@@ -795,7 +850,7 @@ static int bq27x00_powersupply_init(struct bq27x00_device_info *di)
 	 * or a small leaking current of 100mA either battery is
 	 * not connected or battery is full
 	 */
-	ret = bq27x00_battery_current(di, &curr_val);
+	ret = bq27x00_battery_current(di, &curr_val, false);
 	if (ret) {
 		dev_err(di->dev, "failed to get battery current: %d\n", ret);
 		return ret;
@@ -808,7 +863,7 @@ static int bq27x00_powersupply_init(struct bq27x00_device_info *di)
 		 * supplying from battery as LDO is capable of
 		 * supplying less than or equal to 3.7V
 		 */
-		ret = bq27x00_battery_voltage(di, &volt_val);
+		ret = bq27x00_battery_voltage(di, &volt_val, false);
 		if (ret) {
 			dev_err(di->dev, "failed to get voltage: %d\n", ret);
 			return ret;
@@ -831,6 +886,7 @@ static int bq27x00_powersupply_init(struct bq27x00_device_info *di)
 
 		di->wq = create_freezable_workqueue("battery_bq27x00");
 		INIT_DELAYED_WORK(&di->work, bq27x00_battery_poll);
+		init_rwsem(&di->bulk_reg_cache_lock);
 		mutex_init(&di->lock);
 
 		ret = power_supply_register(di->dev, &di->bat);
@@ -970,6 +1026,66 @@ static int bq27x00_read_i2c(struct bq27x00_device_info *di, u8 reg, bool single)
 		ret = data[0];
 
 	return ret;
+}
+
+/*
+ * Read all registers and save them to a local buffer. This minimizes
+ * the overall I2C transfers, and prevents BQ lockup due to excessive
+ * I2C communication.
+ */
+static int bq27x00_register_bulk_cache(struct bq27x00_device_info *di)
+{
+	struct i2c_client *const client = to_i2c_client(di->dev);
+	int stat;
+	uint8_t regaddr_start = BQ27x00_REG_TEMP;
+	int retry_counter = 10;
+	int i;
+
+	struct i2c_msg msgs[] = {
+		{
+		 .addr = client->addr,
+		 .flags = 0,
+		 .len = 1,
+		 .buf = &regaddr_start,
+		 },
+		{
+		 .addr = client->addr,
+		 .flags = I2C_M_RD,
+		 .len = BQ27x00_REG_BUFFER_SIZE,
+		 .buf = di->bulk_reg_cache,
+		 }
+	};
+
+	down_write(&di->bulk_reg_cache_lock);
+	do {
+		stat = i2c_transfer(client->adapter, msgs, ARRAY_SIZE(msgs));
+
+		if (stat < 0)
+			dev_err(di->dev, "I2C read error: %d\n", stat);
+		else if (stat != ARRAY_SIZE(msgs)) {
+			dev_err(di->dev, "I2C read N mismatch: %d\n", stat);
+			stat = -EIO;
+		} else
+			stat = 0;
+#if 0 //AM: look into implementing bq27x00_hw_reset()
+		if (stat != 0)
+			bq27x00_hw_reset(di);
+#endif
+	} while ((stat != 0) && (retry_counter-- > 0));
+
+	dev_dbg(di->dev, "--- cached reg dump ---\n");
+#ifdef DEBUG
+	for (i = 0; i < BQ27x00_REG_BUFFER_SIZE; i++) {
+		printk("0x%02x ", di->bulk_reg_cache[i]);
+		if (!((i+1) % 10)) // 10 regs per line
+			printk("\n");
+	}
+#endif
+	dev_dbg(di->dev, "-----------------------\n");
+
+	up_write(&di->bulk_reg_cache_lock);
+
+	return stat;
 }
 
 static int
