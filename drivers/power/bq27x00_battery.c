@@ -862,11 +862,11 @@ static int bq27x00_powersupply_init(struct bq27x00_device_info *di)
 			return ret;
 		}
 
-		status = request_threaded_irq(di->gpio_irq, NULL,
+		status = gpio_is_valid(di->gpio) ? request_threaded_irq(di->gpio_irq, NULL,
 				bq27x00_irq_handler,
 				(di->irq_flags ? di->irq_flags : IRQF_TRIGGER_LOW) |
 				IRQF_ONESHOT, "bq27x00_soc_int",
-				di);
+				di) : 0;
 		if (status) {
 			dev_err(di->dev, "request irq failed for bq27x00_soc_int");
 			power_supply_unregister(&di->bat);
@@ -908,8 +908,10 @@ static void bq27x00_powersupply_unregister(struct bq27x00_device_info *di)
 
 	power_supply_unregister(&di->bat);
 
-	free_irq(di->gpio_irq, NULL);
-	gpio_free(di->gpio);
+	if (gpio_is_valid(di->gpio)) {
+		free_irq(di->gpio_irq, NULL);
+		gpio_free(di->gpio);
+	}
 	mutex_destroy(&di->lock);
 }
 
@@ -1163,7 +1165,8 @@ static int bq27x00_battery_probe(struct i2c_client *client,
 	di->bus.read = &bq27x00_read_i2c;
 	di->bus.write = &bq27x00_write_i2c;
 	di->gpio = client->irq;
-	retval = gpio_request_one(di->gpio, GPIOF_IN, "bq_gpio");
+	retval = gpio_is_valid(di->gpio) ?
+		gpio_request_one(di->gpio, GPIOF_IN, "bq_gpio") : 0;
 	if (retval < 0) {
 		dev_err(di->dev, "Could not request for GPIO:%i\n",
 				di->gpio);
@@ -1171,7 +1174,7 @@ static int bq27x00_battery_probe(struct i2c_client *client,
 	}
 
 	di->enable_charger = true;
-	di->gpio_irq = gpio_to_irq(di->gpio);
+	di->gpio_irq = gpio_is_valid(di->gpio) ? gpio_to_irq(di->gpio) : -1;
 	di->irq_flags = bq_pdata->irq_flags;
 
 	if (bq27x00_powersupply_init(di))
@@ -1231,7 +1234,7 @@ no_thermal_control:
 batt_failed_5:
 	kfree(tdev);
 batt_failed_4:
-	gpio_free(di->gpio);
+	if (gpio_is_valid(di->gpio)) gpio_free(di->gpio);
 batt_failed_3:
 	kfree(di);
 batt_failed_2:
