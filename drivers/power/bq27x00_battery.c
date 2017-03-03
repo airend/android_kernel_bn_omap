@@ -726,10 +726,8 @@ static int bq27x00_ac_get_property(struct power_supply *psy,
 	int ret = 0;
 	struct bq27x00_device_info *di =
 		container_of(psy, struct bq27x00_device_info, ac);
-	u8 value;
-
-	value = bq27x00_read(di, BQ24160_CHRGR_CTL_STAT_REG, false);
-	value &= STAT_MASK;
+	u8 value = (di->chip == BQ27530) ?
+		bq27x00_read(di, BQ24160_CHRGR_CTL_STAT_REG, false) & STAT_MASK : STAT_0;
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
@@ -1007,7 +1005,8 @@ static int bq27x00_usb_notifier_call(struct notifier_block *nb,
 {
 	struct bq27x00_device_info *di =
 		container_of(nb, struct bq27x00_device_info, nb);
-	u8 val;
+	u8 val = (di->chip == BQ27530) ?
+		bq27x00_read_i2c(di, BQ24160_CHRGR_CONTROL_REG, false) & ~IUSB_LIMIT_MASK : 0;
 
 	di->charger_type = POWER_SUPPLY_TYPE_UNKNOWN;
 #ifdef CONFIG_PALMAS_USB
@@ -1017,26 +1016,29 @@ static int bq27x00_usb_notifier_call(struct notifier_block *nb,
 	di->charger_type = *(int *)data;
 #endif
 
-	val = bq27x00_read_i2c(di, BQ24160_CHRGR_CONTROL_REG, false);
-	val &= ~IUSB_LIMIT_MASK;
-
 	switch (di->charger_type) {
 	case POWER_SUPPLY_TYPE_UNKNOWN:
 	case POWER_SUPPLY_TYPE_BATTERY:
-		/* on disconnect set safe minimal current - 100 mA */
-		bq27x00_write(di, BQ24160_CHRGR_CONTROL_REG, val, true);
+		if (di->chip == BQ27530) {
+			/* on disconnect set safe minimal current - 100 mA */
+			bq27x00_write(di, BQ24160_CHRGR_CONTROL_REG, val, true);
+		}
 		break;
 	case POWER_SUPPLY_TYPE_USB:
-		/* USB2.0 host with 500 mA current limit */
-		val |= IUSB_LIMIT_1;
-		bq27x00_write(di, BQ24160_CHRGR_CONTROL_REG, val, true);
+		if (di->chip == BQ27530) {
+			/* USB2.0 host with 500 mA current limit */
+			val |= IUSB_LIMIT_1;
+			bq27x00_write(di, BQ24160_CHRGR_CONTROL_REG, val, true);
+		}
 		break;
 	case POWER_SUPPLY_TYPE_USB_DCP:
 	case POWER_SUPPLY_TYPE_USB_CDP:
 	case POWER_SUPPLY_TYPE_USB_ACA:
-		/* USB host/charger with 1500 mA current limit */
-		val |= IUSB_LIMIT_2 | IUSB_LIMIT_0;
-		bq27x00_write(di, BQ24160_CHRGR_CONTROL_REG, val, true);
+		if (di->chip == BQ27530) {
+			/* USB host/charger with 1500 mA current limit */
+			val |= IUSB_LIMIT_2 | IUSB_LIMIT_0;
+			bq27x00_write(di, BQ24160_CHRGR_CONTROL_REG, val, true);
+		}
 	default:
 		return NOTIFY_OK;
 	}
