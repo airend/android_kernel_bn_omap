@@ -22,6 +22,7 @@ struct bq27x00_cooling_actions {
 };
 
 struct bq27x00_platform_data {
+	int	irq_flags;
 	int	number_actions;
 	struct	bq27x00_cooling_actions cooling_actions[];
 };

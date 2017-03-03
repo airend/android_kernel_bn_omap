@@ -132,6 +132,7 @@ struct bq27x00_device_info {
 	int			id;
 	int			gpio;
 	int			gpio_irq;
+	int			irq_flags;
 	enum bq27x00_chip	chip;
 
 	struct bq27x00_reg_cache cache;
@@ -863,7 +864,8 @@ static int bq27x00_powersupply_init(struct bq27x00_device_info *di)
 
 		status = request_threaded_irq(di->gpio_irq, NULL,
 				bq27x00_irq_handler,
-				IRQF_TRIGGER_LOW, "bq27x00_soc_int",
+				(di->irq_flags ? di->irq_flags : IRQF_TRIGGER_LOW) |
+				IRQF_ONESHOT, "bq27x00_soc_int",
 				di);
 		if (status) {
 			dev_err(di->dev, "request irq failed for bq27x00_soc_int");
@@ -1152,6 +1154,8 @@ static int bq27x00_battery_probe(struct i2c_client *client,
 		goto batt_failed_2;
 	}
 
+	bq_pdata = dev_get_platdata(&client->dev);
+
 	di->id = num;
 	di->dev = &client->dev;
 	di->chip = id->driver_data;
@@ -1168,6 +1172,7 @@ static int bq27x00_battery_probe(struct i2c_client *client,
 
 	di->enable_charger = true;
 	di->gpio_irq = gpio_to_irq(di->gpio);
+	di->irq_flags = bq_pdata->irq_flags;
 
 	if (bq27x00_powersupply_init(di))
 		goto batt_failed_4;
@@ -1179,7 +1184,6 @@ static int bq27x00_battery_probe(struct i2c_client *client,
 
 	/* Register Battery as cooling device for Case domain */
 	if (di->battery_present) {
-		bq_pdata = dev_get_platdata(&client->dev);
 		/*
 		 * If there is no thermal cooling info for the battery, then
 		 * battery won't participate in the thermal policy as a cooling
@@ -1187,8 +1191,8 @@ static int bq27x00_battery_probe(struct i2c_client *client,
 		 * Hence skipping the thermal registration but allowing probe
 		 * function to succeed.
 		 */
-		if (!bq_pdata) {
-			dev_err(&client->dev, "%s: Invalid platform data\n",
+		if (!bq_pdata->number_actions) {
+			dev_err(&client->dev, "%s: No thermal platform data\n",
 								__func__);
 			goto no_thermal_control;
 		}
