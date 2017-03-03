@@ -2223,40 +2223,54 @@ static inline unsigned ddr2ns(struct platform_device *dsidev, unsigned ddr)
 	return ddr * 1000 * 1000 / (ddr_clk / 1000);
 }
 
-static void dsi_cio_timings(struct platform_device *dsidev)
+static void dsi_cio_timings(struct omap_dss_device *dssdev)
 {
 	u32 r;
 	u32 ths_prepare, ths_prepare_ths_zero, ths_trail, ths_exit;
 	u32 tlpx_half, tclk_trail, tclk_zero;
-	u32 tclk_prepare;
+	u32 tclk_prepare, reg_ttaget;
+	struct platform_device *dsidev = dsi_get_dsidev_from_dssdev(dssdev);
 
 	/* calculate timings */
 
 	/* 1 * DDR_CLK = 2 * UI */
+	if(dssdev->panel.dsi_cio_data.tclk_prepare == 0)
+	{
+		/* min 40ns + 4*UI	max 85ns + 6*UI */
+		ths_prepare = ns2ddr(dsidev, 70) + 2;
 
-	/* min 40ns + 4*UI	max 85ns + 6*UI */
-	ths_prepare = ns2ddr(dsidev, 70) + 2;
+		/* min 145ns + 10*UI */
+		ths_prepare_ths_zero = ns2ddr(dsidev, 175) + 2;
 
-	/* min 145ns + 10*UI */
-	ths_prepare_ths_zero = ns2ddr(dsidev, 175) + 2;
+		/* min max(8*UI, 60ns+4*UI) */
+		ths_trail = ns2ddr(dsidev, 60) + 5;
 
-	/* min max(8*UI, 60ns+4*UI) */
-	ths_trail = ns2ddr(dsidev, 60) + 5;
+		/* min 100ns */
+		ths_exit = ns2ddr(dsidev, 145);
 
-	/* min 100ns */
-	ths_exit = ns2ddr(dsidev, 145);
+		/* tlpx min 50n */
+		tlpx_half = ns2ddr(dsidev, 25);
 
-	/* tlpx min 50n */
-	tlpx_half = ns2ddr(dsidev, 25);
+		/* min 60ns */
+		tclk_trail = ns2ddr(dsidev, 60) + 2;
 
-	/* min 60ns */
-	tclk_trail = ns2ddr(dsidev, 60) + 2;
+		/* min 38ns, max 95ns */
+		tclk_prepare = ns2ddr(dsidev, 65);
 
-	/* min 38ns, max 95ns */
-	tclk_prepare = ns2ddr(dsidev, 65);
-
-	/* min tclk-prepare + tclk-zero = 300ns */
-	tclk_zero = ns2ddr(dsidev, 260);
+		/* min tclk-prepare + tclk-zero = 300ns */
+		tclk_zero = ns2ddr(dsidev, 260);
+	} else {
+		ths_prepare = dssdev->panel.dsi_cio_data.ths_prepare;
+		ths_prepare_ths_zero =
+			dssdev->panel.dsi_cio_data.ths_prepare_ths_zero;
+		ths_trail = dssdev->panel.dsi_cio_data.ths_trail;
+		ths_exit = dssdev->panel.dsi_cio_data.ths_exit;
+		tlpx_half = dssdev->panel.dsi_cio_data.tlpx_half;
+		tclk_trail = dssdev->panel.dsi_cio_data.tclk_trail;
+		tclk_zero = dssdev->panel.dsi_cio_data.tclk_zero;
+		tclk_prepare = dssdev->panel.dsi_cio_data.tclk_prepare;
+		reg_ttaget = dssdev->panel.dsi_cio_data.reg_ttaget;
+	}
 
 	DSSDBG("ths_prepare %u (%uns), ths_prepare_ths_zero %u (%uns)\n",
 		ths_prepare, ddr2ns(dsidev, ths_prepare),
@@ -2283,6 +2297,7 @@ static void dsi_cio_timings(struct platform_device *dsidev)
 	dsi_write_reg(dsidev, DSI_DSIPHY_CFG0, r);
 
 	r = dsi_read_reg(dsidev, DSI_DSIPHY_CFG1);
+	r = FLD_MOD(r, reg_ttaget, 26, 24);
 	r = FLD_MOD(r, tlpx_half, 22, 16);
 	r = FLD_MOD(r, tclk_trail, 15, 8);
 	r = FLD_MOD(r, tclk_zero, 7, 0);
@@ -2508,7 +2523,7 @@ static int dsi_cio_init(struct omap_dss_device *dssdev)
 	/* FORCE_TX_STOP_MODE_IO */
 	REG_FLD_MOD(dsidev, DSI_TIMING1, 0, 15, 15);
 
-	dsi_cio_timings(dsidev);
+	dsi_cio_timings(dssdev);
 
 	if (dssdev->panel.dsi_mode == OMAP_DSS_DSI_VIDEO_MODE) {
 		/* DDR_CLK_ALWAYS_ON */

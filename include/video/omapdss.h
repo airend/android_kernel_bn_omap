@@ -393,6 +393,18 @@ struct omap_video_timings {
 	u16 vbp;	/* Vertical back porch */
 };
 
+struct omap_cio_timings {
+	u32 ths_prepare;
+	u32 ths_prepare_ths_zero;
+	u32 ths_trail;
+	u32 ths_exit;
+	u32 tlpx_half;
+	u32 tclk_trail;
+	u32 tclk_zero;
+	u32 tclk_prepare;
+	u32 reg_ttaget;
+};
+
 #ifdef CONFIG_OMAP2_DSS_VENC
 /* Hardcoded timings for tv modes. Venc only uses these to
  * identify the mode, and does not actually use the configs
@@ -753,6 +765,7 @@ struct omap_dss_device {
 		enum omap_dss_dsi_pixel_format dsi_pix_fmt;
 		enum omap_dss_dsi_mode dsi_mode;
 		struct omap_dss_dsi_videomode_data dsi_vm_data;
+		struct omap_cio_timings dsi_cio_data;
 		u32 width_in_um;
 		u32 height_in_um;
 		u16 fb_xres;
