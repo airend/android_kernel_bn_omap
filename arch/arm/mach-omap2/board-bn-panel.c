@@ -263,18 +263,16 @@ static struct omap_dss_device bn_lcd_panel = {
 			.ddr_clk_always_on	= 0,
 			.window_sync		= 4,
 		},
-#if 0
 		.dsi_cio_data = {
 #ifdef CONFIG_MACH_OMAP_HUMMINGBIRD
 			.ths_prepare		= 16,
-			.ths_prepare_ths_zero = 21,
+			.ths_prepare_ths_zero = 37,
 			.ths_trail			= 17,
 			.ths_exit			= 29,
 			.tlpx_half			= 5,
 			.tclk_trail			= 14,
 			.tclk_zero			= 53,
 			.tclk_prepare		= 13,
-			.reg_ttaget			= 4,
 #endif
 #ifdef CONFIG_MACH_OMAP_OVATION
 			.ths_prepare		= 26,
@@ -285,10 +283,9 @@ static struct omap_dss_device bn_lcd_panel = {
 			.tclk_trail			= 23,
 			.tclk_zero			= 89,
 			.tclk_prepare		= 22,
-			.reg_ttaget			= 4,
 #endif
+			.reg_ttaget			= 2,
 		},
-#endif
 		.acbi 			= 40,
 		.acb			= 0,
 #ifdef CONFIG_MACH_OMAP_HUMMINGBIRD
@@ -534,6 +531,13 @@ void bn_android_display_setup(void)
 		bn_lcd_panel.panel.dsi_vm_data.vfp	= 10;
 
 		bn_lcd_panel.panel.dsi_vm_data.blanking_mode = 1;
+
+		bn_lcd_panel.panel.dsi_cio_data.ths_prepare = 17;
+		bn_lcd_panel.panel.dsi_cio_data.ths_prepare_ths_zero = 39;
+		bn_lcd_panel.panel.dsi_cio_data.ths_exit = 31;
+		bn_lcd_panel.panel.dsi_cio_data.tclk_trail = 15;
+		bn_lcd_panel.panel.dsi_cio_data.tclk_zero = 55;
+		bn_lcd_panel.panel.dsi_cio_data.tclk_prepare = 14;
 	}
 #endif
 
