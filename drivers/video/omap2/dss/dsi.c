@@ -3136,7 +3136,7 @@ static int dsi_vc_send_long(struct platform_device *dsidev, int channel,
 	}
 
 	/* wait for IRQ for long packet transmission confirmation */
-	for (i = 0; i < 1000; i++) {
+	for (i = 0; i < 100000; i++) {
 		u32 val;
 		val = dsi_read_reg(dsidev, DSI_VC_IRQSTATUS(channel));
 		if (val & 0x4) {
