@@ -4173,8 +4173,8 @@ static void dsi_proto_timings(struct omap_dss_device *dssdev)
 		dsi_write_reg(dsidev, DSI_VM_TIMING5, r);
 
 		r = dsi_read_reg(dsidev, DSI_VM_TIMING6);
-		r = FLD_MOD(r, bl_interleave_hs, 31, 15);
-		r = FLD_MOD(r, bl_interleave_lp, 16, 0);
+		r = FLD_MOD(r, bl_interleave_hs, 31, 16);
+		r = FLD_MOD(r, bl_interleave_lp, 15, 0);
 		dsi_write_reg(dsidev, DSI_VM_TIMING6, r);
 	}
 }
