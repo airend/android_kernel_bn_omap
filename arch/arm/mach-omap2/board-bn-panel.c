@@ -239,7 +239,17 @@ static struct omap_dss_device bn_lcd_panel = {
 			.vsa		= 18,
 			.vbp		= 3,
 			.vfp		= 14,
+			.hsa_hs_int	= 72,
+			.hfp_hs_int	= 114,
+			.hbp_hs_int	= 150,
+			.bl_lp_int	= 12753,
+			.bl_hs_int	= 31335,
+			.exit_lat	= 15,
+			.enter_lat	= 18,
 #endif
+			.hsa_lp_int	= 130,
+			.hfp_lp_int	= 223,
+			.hbp_lp_int	= 59,
 #ifdef CONFIG_MACH_OMAP_OVATION
 			.hsa		= 0,
 			.hfp		= 24,
@@ -247,6 +257,13 @@ static struct omap_dss_device bn_lcd_panel = {
 			.vsa		= 1,
 			.vbp		= 9,
 			.vfp		= 10,
+			.hsa_hs_int	= 0,
+			.hfp_hs_int	= 0,
+			.hbp_hs_int	= 0,
+			.bl_lp_int	= 1038,
+			.bl_hs_int	= 1038,
+			.exit_lat	= 21,
+			.enter_lat	= 23,
 #endif
 			/* DSI blanking modes */
 			.blanking_mode		= 0,
