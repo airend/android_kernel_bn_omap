@@ -4069,11 +4069,13 @@ static void dsi_proto_timings(struct omap_dss_device *dssdev)
 			ddr_clk_pre,
 			ddr_clk_post);
 
-	enter_hs_mode_lat = 1 + DIV_ROUND_UP(tlpx, 4) +
+	enter_hs_mode_lat = dssdev->panel.dsi_vm_data.enter_lat ? :
+		1 + DIV_ROUND_UP(tlpx, 4) +
 		DIV_ROUND_UP(ths_prepare, 4) +
 		DIV_ROUND_UP(ths_zero + 3, 4);
 
-	exit_hs_mode_lat = DIV_ROUND_UP(ths_trail + ths_exit, 4) + 1 + ths_eot;
+	exit_hs_mode_lat = dssdev->panel.dsi_vm_data.exit_lat ? :
+		DIV_ROUND_UP(ths_trail + ths_exit, 4) + 1 + ths_eot;
 
 	r = FLD_VAL(enter_hs_mode_lat, 31, 16) |
 		FLD_VAL(exit_hs_mode_lat, 15, 0);
@@ -4137,27 +4139,33 @@ static void dsi_proto_timings(struct omap_dss_device *dssdev)
 
 		/* Command mode interleave configuration */
 
-		hsa_interleave_hs = dsi_compute_interleave_hs(hsa, ddr_alwon,
+		hsa_interleave_hs = dssdev->panel.dsi_vm_data.hsa_hs_int ? :
+					dsi_compute_interleave_hs(hsa, ddr_alwon,
 					enter_hs_mode_lat, exit_hs_mode_lat,
 					ddr_clk_pre, ddr_clk_post);
 
-		hfp_interleave_hs = dsi_compute_interleave_hs(hfp, ddr_alwon,
+		hfp_interleave_hs = dssdev->panel.dsi_vm_data.hfp_hs_int ? :
+					dsi_compute_interleave_hs(hfp, ddr_alwon,
 					enter_hs_mode_lat, exit_hs_mode_lat,
 					ddr_clk_pre, ddr_clk_post);
 
-		hbp_interleave_hs = dsi_compute_interleave_hs(hbp, ddr_alwon,
+		hbp_interleave_hs = dssdev->panel.dsi_vm_data.hbp_hs_int ? :
+					dsi_compute_interleave_hs(hbp, ddr_alwon,
 					enter_hs_mode_lat, exit_hs_mode_lat,
 					ddr_clk_pre, ddr_clk_post);
 
-		hsa_interleave_lp = dsi_compute_interleave_lp(hsa,
+		hsa_interleave_lp = dssdev->panel.dsi_vm_data.hsa_lp_int ? :
+					dsi_compute_interleave_lp(hsa,
 					enter_hs_mode_lat, exit_hs_mode_lat,
 					lp_clk_div, regm_dsi);
 
-		hfp_interleave_lp = dsi_compute_interleave_lp(hfp,
+		hfp_interleave_lp = dssdev->panel.dsi_vm_data.hfp_lp_int ? :
+					dsi_compute_interleave_lp(hfp,
 					enter_hs_mode_lat, exit_hs_mode_lat,
 					lp_clk_div, regm_dsi);
 
-		hbp_interleave_lp = dsi_compute_interleave_lp(hbp,
+		hbp_interleave_lp = dssdev->panel.dsi_vm_data.hbp_lp_int ? :
+					dsi_compute_interleave_lp(hbp,
 					enter_hs_mode_lat, exit_hs_mode_lat,
 					lp_clk_div, regm_dsi);
 
@@ -4167,11 +4175,13 @@ static void dsi_proto_timings(struct omap_dss_device *dssdev)
 		 */
 		bllp = hbp + hfp + DIV_ROUND_UP(width_bytes + 6, ndl);
 
-		bl_interleave_hs = dsi_compute_interleave_hs(bllp, ddr_alwon,
+		bl_interleave_hs = dssdev->panel.dsi_vm_data.bl_hs_int ? :
+					dsi_compute_interleave_hs(bllp, ddr_alwon,
 					enter_hs_mode_lat, exit_hs_mode_lat,
 					ddr_clk_pre, ddr_clk_post);
 
-		bl_interleave_lp = dsi_compute_interleave_lp(bllp,
+		bl_interleave_lp = dssdev->panel.dsi_vm_data.bl_lp_int ? :
+					dsi_compute_interleave_lp(bllp,
 					enter_hs_mode_lat, exit_hs_mode_lat,
 					lp_clk_div, regm_dsi);
 

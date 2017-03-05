@@ -305,6 +305,25 @@ struct omap_dss_dsi_videomode_data {
 	u16 vfp;
 	u16 vbp;
 
+	/* Unit: HS DSI byte clocks */
+	u16 hsa_hs_int;	/* HSA HS interleaving */
+	u16 hfp_hs_int;	/* HFP HS interleaving */
+	u16 hbp_hs_int;	/* HBP HS interleaving */
+
+	/* Unit: DSI Command mode packets */
+	u16 hsa_lp_int;	/* HSA LP interleaving */
+	u16 hfp_lp_int;	/* HFP LP interleaving */
+	u16 hbp_lp_int;	/* HBP LP interleaving */
+
+	/* Unit: HS DSI byte clocks */
+	u16 bl_hs_int;	/* Blanking HS interleaving */
+	/* Unit: DSI command mode packets */
+	u16 bl_lp_int;	/* Blanking LP interleaving */
+
+	/* Unit: HS DSI byte clocks */
+	u16 enter_lat;	/* Enter HS mode latency */
+	u16 exit_lat;	/* Exit HS mode latency */
+
 	/* DSI blanking modes */
 	int blanking_mode;
 	int hsa_blanking_mode;
