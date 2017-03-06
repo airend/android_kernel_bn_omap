@@ -3757,8 +3757,12 @@ int omap_dispc_unregister_isr_nosync(omap_dispc_isr_t isr, void *arg, u32 mask)
 		break;
 	}
 
-	if (ret == 0)
-		_omap_dispc_set_irqs();
+	if (ret == 0) {
+		if (pm_runtime_suspended(&dispc.pdev->dev))
+			DSSERR("Trying to disable IRQ while DSS is off!\n");
+		else
+			_omap_dispc_set_irqs();
+	}
 
 	spin_unlock_irqrestore(&dispc.irq_lock, flags);
 
