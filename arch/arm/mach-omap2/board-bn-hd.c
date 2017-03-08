@@ -177,14 +177,14 @@ static struct bq27x00_platform_data __initdata bq27520_platform_data = {
 		{ .priority = 0, .percentage = 100, }, /* Full Charging Cur */
 		{ .priority = 1, .percentage = 0, }, /* Charging OFF */
 	},
-	.irq_flags = IRQF_TRIGGER_FALLING,
 #endif
+	.irq_flags = IRQF_TRIGGER_FALLING,
 };
 
 static struct i2c_board_info __initdata bq27520_i2c_boardinfo = {
 	I2C_BOARD_INFO("bq27500", 0x55),
 	//.flags = I2C_CLIENT_WAKE,
-	.irq = -1,
+	.irq = 142,
 	.platform_data = &bq27520_platform_data,
 };
 #endif
