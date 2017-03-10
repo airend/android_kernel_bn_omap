@@ -1334,6 +1334,21 @@ static int dsi_calc_clock_rates(struct omap_dss_device *dssdev,
 	else
 		cinfo->dsi_pll_hsdiv_dsi_clk = 0;
 
+	dsi->current_cinfo.use_sys_clk = cinfo->use_sys_clk;
+	dsi->current_cinfo.highfreq = cinfo->highfreq;
+
+	dsi->current_cinfo.fint = cinfo->fint;
+	dsi->current_cinfo.clkinxddr = cinfo->clkinxddr;
+	dsi->current_cinfo.dsi_pll_hsdiv_dispc_clk =
+			cinfo->dsi_pll_hsdiv_dispc_clk;
+	dsi->current_cinfo.dsi_pll_hsdiv_dsi_clk =
+			cinfo->dsi_pll_hsdiv_dsi_clk;
+
+	dsi->current_cinfo.regn = cinfo->regn;
+	dsi->current_cinfo.regm = cinfo->regm;
+	dsi->current_cinfo.regm_dispc = cinfo->regm_dispc;
+	dsi->current_cinfo.regm_dsi = cinfo->regm_dsi;
+
 	return 0;
 }
 
@@ -1542,6 +1557,11 @@ int dsi_pll_set_clock_div(struct platform_device *dsidev,
 	/* DSI_PLL_AUTOMODE = manual */
 	REG_FLD_MOD(dsidev, DSI_PLL_CONTROL, 0, 0, 0);
 
+	l = dsi_read_reg(dsidev, DSI_PLL_CONTROL);
+	l |= FLD_MOD(l, 1, 1, 1);
+	l |= FLD_MOD(l, 1, 2, 2);
+	dsi_write_reg(dsidev, DSI_PLL_CONTROL, l);
+
 	l = dsi_read_reg(dsidev, DSI_PLL_CONFIGURATION1);
 	l = FLD_MOD(l, 1, 0, 0);		/* DSI_PLL_STOPMODE */
 	/* DSI_PLL_REGN */
@@ -1584,7 +1604,7 @@ int dsi_pll_set_clock_div(struct platform_device *dsidev,
 	l = FLD_MOD(l, 1, 13, 13);		/* DSI_PLL_REFEN */
 	l = FLD_MOD(l, 0, 14, 14);		/* DSIPHY_CLKINEN */
 	l = FLD_MOD(l, 1, 20, 20);		/* DSI_HSDIVBYPASS */
-	if (dss_has_feature(FEAT_DSI_PLL_REFSEL))
+	if (cpu_is_omap44xx())
 		l = FLD_MOD(l, 3, 22, 21);	/* REF_SYSCLK */
 	dsi_write_reg(dsidev, DSI_PLL_CONFIGURATION2, l);
 
@@ -3228,9 +3248,11 @@ static int dsi_vc_write_common(struct omap_dss_device *dssdev, int channel,
 	if (r)
 		goto err;
 
+#if 0
 	r = dsi_vc_send_bta_sync(dssdev, channel);
 	if (r)
 		goto err;
+#endif
 
 	/* RX_FIFO_NOT_EMPTY */
 	if (REG_GET(dsidev, DSI_VC_CTRL(channel), 20, 20)) {
@@ -3396,6 +3418,12 @@ static int dsi_vc_read_rx_fifo(struct platform_device *dsidev, int channel,
 		if (buflen < 1) {
 			r = -EIO;
 			goto err;
+		}
+
+		/* Read the error report NT71391 TCON is sending */
+		if (REG_GET(dsidev, DSI_VC_CTRL(channel), 20, 20)) {
+			DSSERR("read error report\n");
+			dsi_vc_flush_receive_data(dsidev, channel);
 		}
 
 		buf[0] = data;
