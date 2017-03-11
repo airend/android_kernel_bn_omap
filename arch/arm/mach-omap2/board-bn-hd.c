@@ -168,23 +168,14 @@ static void omap4_audio_conf(void)
 
 #ifdef CONFIG_BATTERY_BQ27x00
 static struct bq27x00_platform_data __initdata bq27520_platform_data = {
-#if 0 // AM: old pdata that may be implemented in the future
 	.gpio_ce = 113,
 	.gpio_soc_int = 176,
 	.gpio_bat_low = 42,
-	.number_actions = 2,
-	.cooling_actions = {
-		{ .priority = 0, .percentage = 100, }, /* Full Charging Cur */
-		{ .priority = 1, .percentage = 0, }, /* Charging OFF */
-	},
-#endif
-	.irq_flags = IRQF_TRIGGER_FALLING,
 };
 
 static struct i2c_board_info __initdata bq27520_i2c_boardinfo = {
 	I2C_BOARD_INFO("bq27500", 0x55),
-	//.flags = I2C_CLIENT_WAKE,
-	.irq = 142,
+	.flags = I2C_CLIENT_WAKE,
 	.platform_data = &bq27520_platform_data,
 };
 #endif
@@ -478,7 +469,7 @@ static void __init omap_bn_init(void)
                 omap_pm_enable_off_mode();
 
 	/* Enable GG bat_low irq to wake up device to inform framework to shutdown. */
-	//omap_mux_init_gpio(BQ27500_BAT_LOW_GPIO, OMAP_PIN_INPUT | OMAP_PIN_OFF_WAKEUPENABLE);
+	omap_mux_init_gpio(BQ27500_BAT_LOW_GPIO, OMAP_PIN_INPUT | OMAP_PIN_OFF_WAKEUPENABLE);
 }
 
 static void __init omap_bn_reserve(void)
