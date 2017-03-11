@@ -1039,9 +1039,12 @@ static int bq27x00_usb_notifier_call(struct notifier_block *nb,
 			val |= IUSB_LIMIT_2 | IUSB_LIMIT_0;
 			bq27x00_write(di, BQ24160_CHRGR_CONTROL_REG, val, true);
 		}
+		break;
 	default:
-		return NOTIFY_OK;
+		return NOTIFY_DONE;
 	}
+
+	power_supply_changed(&di->usb);
 
 	return NOTIFY_OK;
 }
