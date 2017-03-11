@@ -286,6 +286,7 @@ static irqreturn_t twl6030_usb_irq(int irq, void *_twl)
 				regulator_disable(twl->usb3v3);
 				charger_type = POWER_SUPPLY_TYPE_UNKNOWN;
 				status = OMAP_MUSB_ID_FLOAT;
+				event = USB_EVENT_NO_CONTACT;
 			}
 			twl->asleep = 1;
 			twl6030_status = event;

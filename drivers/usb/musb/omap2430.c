@@ -298,6 +298,13 @@ static void omap_musb_set_mailbox(struct omap2430_glue *glue)
 		break;
 
 	case OMAP_MUSB_ID_FLOAT:
+		dev_dbg(dev, "USB No Contact\n");
+
+		musb->xceiv->last_event = USB_EVENT_NO_CONTACT;
+		atomic_notifier_call_chain(&musb->xceiv->notifier,
+						musb->xceiv->last_event, NULL);
+		break;
+
 	case OMAP_MUSB_VBUS_OFF:
 		dev_dbg(dev, "VBUS Disconnect\n");
 
