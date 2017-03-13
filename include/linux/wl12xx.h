@@ -61,6 +61,8 @@ struct wl12xx_platform_data {
 	int board_ref_clock;
 	int board_tcxo_clock;
 	bool pwr_in_suspend;
+
+	void (*set_power)(bool enable);
 };
 
 #ifdef CONFIG_WILINK_PLATFORM_DATA
