@@ -1107,7 +1107,7 @@ static inline void acclaim_serial_init(void)
 
 static struct wl12xx_platform_data omap4_acclaim_wlan_data __initdata = {
 	.irq = OMAP_GPIO_IRQ(GPIO_WIFI_IRQ),
-	.board_ref_clock = WL12XX_REFCLOCK_38
+	.ref_clock_freq = 38400000,
 };
 
 void config_wlan_mux(void)
