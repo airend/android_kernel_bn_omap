@@ -90,14 +90,6 @@ enum {
 #define OMAP_ION_HEAP_NONSECURE_TILER_MASK (1 << OMAP_ION_HEAP_NONSECURE_TILER)
 #define OMAP_ION_HEAP_TILER_RESERVATION_MASK (1 << OMAP_ION_HEAP_TILER_RESERVATION)
 
-/**
- * allocation flags - the lower 16 bits are used by core ion, the upper 16
- * bits are reserved for use by the heaps themselves.
- */
-
-/*use this flag to distinguish either omap_tiler_alloc() is calling from ION core or OMAP IOCTL */
-#define OMAP_ION_FLAG_NO_ALLOC_TILER_HEAP	(1<<16)
-
 enum {
 	OMAP_ION_TILER_ALLOC,
 	OMAP_ION_PHYS_ADDR,
