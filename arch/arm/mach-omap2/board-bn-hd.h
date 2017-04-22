@@ -44,6 +44,6 @@ int bn_touch_init(void);
 void bn_android_display_setup(void);
 void bn_emif_init(void);
 void bn_power_init(void);
-void bn_wilink_init(void);
+void bn_wilink_init(struct device *dev);
 
 #endif
