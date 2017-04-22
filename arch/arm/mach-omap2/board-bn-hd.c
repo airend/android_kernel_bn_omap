@@ -459,10 +459,10 @@ static void __init omap_bn_init(void)
 	omap4_register_ion();
 #endif
 	board_serial_init();
-	bn_wilink_init();
 
 	omap_sdrc_init(NULL, NULL);
 	omap4_twl6030_hsmmc_init(bn_mmc);
+	bn_wilink_init(&bn_mmc[2].pdev->dev);
 	usb_musb_init(&musb_board_data);
 
 	omap_enable_smartreflex_on_init();
