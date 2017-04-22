@@ -803,22 +803,6 @@ int dss_ovl_check(struct omap_overlay *ovl,
 		}
 	}
 
-	/* OMAP44xx limitation: in Stallmode, when the frame pixel size
-	* is less than output SyncFifo depth(16) DISPC hangs without
-	* sending any data. Observation is: when width/height less than 4/5
-	* no FRAMEDONE INQ ever received for such frame
-	*/
-	if ((info->width < 4 || info->height < 5) &&
-		(info->color_mode == OMAP_DSS_COLOR_NV12 ||
-		info->color_mode == OMAP_DSS_COLOR_YUV2 ||
-		info->color_mode == OMAP_DSS_COLOR_UYVY))
-		if (dssdev->type == OMAP_DISPLAY_TYPE_DSI &&
-			dssdev->panel.dsi_mode == OMAP_DSS_DSI_CMD_MODE &&
-			cpu_is_omap44xx()) {
-			DSSWARN("too small frame on VID%d dropped\n", ovl->id);
-			return -EINVAL;
-			}
-
 	if (dssdev->type == OMAP_DISPLAY_TYPE_DSI) {
 		/*
 		 * OMAP44xx/ OMAP5 ES1.0/2.0 Errata i339: DSI: Minimum of 2
