@@ -290,29 +290,7 @@ static struct twl6040_platform_data twl6040_data = {
 	.irq_base	= TWL6040_CODEC_IRQ_BASE,
 };
 
-#ifdef CONFIG_TWL6030_POWER
-static struct twl4030_resconfig bn_twl_resconfig[] = {
-	{
-		.resource = RES_LDOLN, .devgroup = DEV_GRP_NULL,
-		.remap_off = RES_STATE_OFF, .remap_sleep = RES_STATE_OFF
-	},
-	{
-		.resource = RES_LDO7, .devgroup = DEV_GRP_NULL,
-		.remap_off = RES_STATE_OFF, .remap_sleep = RES_STATE_OFF
-	},
-	{ .resource = RES_LDOUSB, .devgroup = DEV_GRP_NULL },
-	{ .resource = TWL4030_RESCONFIG_UNDEF },
-};
-
-static struct twl4030_power_data bn_twl_power_data = {
-	.resource_config = bn_twl_resconfig,
-};
-#endif
-
 static struct twl4030_platform_data twldata = {
-#ifdef CONFIG_TWL6030_POWER
-	.power		= &bn_twl_power_data,
-#endif
 	/* TWL6032 regulators at OMAP447X based SOMs */
 	.ldo3		= &vaux3,
 	.ldo4		= &vaux2,
