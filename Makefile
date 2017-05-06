@@ -357,7 +357,7 @@ CHECK		= sparse
 
 CHECKFLAGS     := -D__linux__ -Dlinux -D__STDC__ -Dunix -D__unix__ \
 		  -Wbitwise -Wno-return-void $(CF)
-KERNELFLAGS	= $(COMMONFLAGS) -mtune=cortex-a9 -mcpu=cortex-a9 -marm -mfpu=neon \
+KERNELFLAGS	= $(COMMONFLAGS) -mtune=cortex-a9 -mcpu=cortex-a9 -mthumb -mfpu=neon \
 				-mvectorize-with-neon-quad -munaligned-access
 # Bad options: -floop-parallelize-all -ftree-parallelize-loops=4
 MODFLAGS	= -DMODULE $(KERNELFLAGS)
