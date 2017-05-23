@@ -465,13 +465,14 @@ static void otg_set_vbus_work(struct work_struct *data)
 
 static int twl6030_set_vbus(struct phy_companion *comparator, bool enabled)
 {
+#ifndef CONFIG_CHARGER_BQ2419x
 	struct twl6030_usb *twl = comparator_to_twl(comparator);
 
 	if (twl->vbus_enable != enabled) {
 		twl->vbus_enable = enabled;
 		schedule_work(&twl->set_vbus_work);
 	}
-
+#endif
 	return 0;
 }
 
