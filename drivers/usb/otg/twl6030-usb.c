@@ -124,7 +124,7 @@ struct twl6030_usb {
 	struct wake_lock	charger_det_lock;
 };
 
-static int twl6030_force_usb_id = -1;
+static int twl6030_force_usb_id = 0;
 
 static BLOCKING_NOTIFIER_HEAD(notifier_list);
 
@@ -265,10 +265,8 @@ static irqreturn_t twl6030_usb_irq(int irq, void *_twl)
 
 	hw_state = twl6030_readb(twl, TWL6030_MODULE_ID0, STS_HW_CONDITIONS);
 
-	if (twl6030_force_usb_id > 0)
+	if (twl6030_force_usb_id)
 		hw_state |= STS_USB_ID;
-	else if (!twl6030_force_usb_id)
-		hw_state &= ~STS_USB_ID;
 
 	vbus_state = twl6030_readb(twl, TWL_MODULE_MAIN_CHARGE,
 						CONTROLLER_STAT1);
@@ -335,10 +333,8 @@ static irqreturn_t twl6030_usbotg_irq(int irq, void *_twl)
 
 	hw_state = twl6030_readb(twl, TWL6030_MODULE_ID0, STS_HW_CONDITIONS);
 
-	if (twl6030_force_usb_id > 0)
+	if (twl6030_force_usb_id)
 		hw_state |= STS_USB_ID;
-	else if (!twl6030_force_usb_id)
-		hw_state &= ~STS_USB_ID;
 
 	if (hw_state & STS_USB_ID) {
 		if (twl->prev_status == OMAP_MUSB_ID_GROUND)
@@ -422,7 +418,7 @@ static ssize_t twl6030_usb_id_show(struct device *dev,
 	int ret = -EINVAL;
 
 	ret = snprintf(buf, PAGE_SIZE, "%sable\n",
-		       twl6030_force_usb_id > 0 ? "en" : "dis");
+		       twl6030_force_usb_id?"en":"dis");
 
 	return ret;
 }
