@@ -70,7 +70,7 @@ static int omap_tiler_heap_allocate(struct ion_heap *heap,
 				    unsigned long size, unsigned long align,
 				    unsigned long flags)
 {
-	if (size == 0)
+	if (buffer->flags & OMAP_ION_FLAG_NO_ALLOC_TILER_HEAP)
 		return 0;
 
 	pr_err("%s: This should never be called directly -- use the "
@@ -209,12 +209,58 @@ static void omap_tiler_free_dynamicpages(struct omap_tiler_info *info)
 #endif
 }
 
+static struct sg_table *omap_tiler_map_dma(struct omap_tiler_info *info,
+						struct ion_buffer *buffer)
+{
+	struct sg_table *table;
+	int ret, i;
+
+	if (buffer->sg_table) {
+		table = buffer->sg_table;
+		sg_free_table(table);
+	}
+	else {
+		table = kzalloc(sizeof(struct sg_table), GFP_KERNEL);
+		if (!table)
+			return ERR_PTR(-ENOMEM);
+	}
+
+	ret = sg_alloc_table(table, (info->lump ? 1 : info->n_tiler_pages),
+			GFP_KERNEL);
+	if (ret) {
+		kfree(table);
+		buffer->sg_table = NULL;
+		return ERR_PTR(ret);
+	}
+
+	if (info->lump) {
+		sg_set_page(table->sgl, phys_to_page(info->tiler_addrs[0]),
+			    info->n_tiler_pages * PAGE_SIZE, 0);
+		return table;
+	}
+
+	for (i = 0; i < info->n_tiler_pages; i++) {
+		sg_set_page(table->sgl, phys_to_page(info->tiler_addrs[i]),
+			    PAGE_SIZE, 0);
+	}
+	return table;
+}
+
+static void omap_tiler_unmap_dma(struct ion_buffer *buffer)
+{
+	if (buffer->sg_table == NULL)
+		return;
+	sg_free_table(buffer->sg_table);
+	kfree(buffer->sg_table);
+}
+
 int omap_tiler_alloc(struct ion_heap *heap,
 		     struct ion_client *client,
 		     struct omap_ion_tiler_alloc_data *data)
 {
 	struct ion_handle *handle;
 	struct ion_buffer *buffer;
+	struct sg_table *sg_table;
 	struct omap_tiler_info *info = NULL;
 	u32 n_phys_pages;
 	u32 n_tiler_pages;
@@ -312,7 +358,11 @@ int omap_tiler_alloc(struct ion_heap *heap,
 	data->stride = info->vstride;
 
 	/* create an ion handle  for the allocation */
-	handle = ion_alloc(client, 0, 0, OMAP_ION_HEAP_TILER_MASK, 0);
+
+	/* This hack is to avoid the call itself from ion_alloc()
+		when the buffer and handle are created */
+	handle = ion_alloc(client, PAGE_ALIGN(1), 0, OMAP_ION_HEAP_TILER_MASK,
+		heap->flags | OMAP_ION_FLAG_NO_ALLOC_TILER_HEAP);
 	if (IS_ERR_OR_NULL(handle)) {
 		ret = PTR_ERR(handle);
 		pr_err("%s: failure to allocate handle to manage "
@@ -323,6 +373,10 @@ int omap_tiler_alloc(struct ion_heap *heap,
 	buffer = ion_handle_buffer(handle);
 	buffer->size = n_tiler_pages * PAGE_SIZE;
 	buffer->priv_virt = info;
+	sg_table = omap_tiler_map_dma(info, buffer);
+	if (IS_ERR(sg_table))
+		goto err;
+	buffer->sg_table = sg_table;
 	data->handle = handle;
 	data->offset = (size_t)(info->tiler_start & ~PAGE_MASK);
 
@@ -349,6 +403,7 @@ static void omap_tiler_heap_free(struct ion_buffer *buffer)
 {
 	struct omap_tiler_info *info = buffer->priv_virt;
 
+	omap_tiler_unmap_dma(buffer);
 	tiler_unpin(info->tiler_handle);
 	tiler_release(info->tiler_handle);
 
@@ -372,6 +427,50 @@ static int omap_tiler_phys(struct ion_heap *heap,
 	*addr = info->tiler_start;
 	*len = buffer->size;
 	return 0;
+}
+
+static struct sg_table *omap_tiler_map_dma_empty(
+					struct ion_buffer *buffer)
+{
+	struct sg_table *table;
+	int ret;
+
+	table = kzalloc(sizeof(struct sg_table), GFP_KERNEL);
+	if (!table)
+		return ERR_PTR(-ENOMEM);
+
+	ret = sg_alloc_table(table, 1, GFP_KERNEL);
+	if (ret) {
+		kfree(table);
+		return ERR_PTR(ret);
+	}
+
+	sg_set_page(table->sgl, virt_to_page(buffer->priv_virt), 1, 0);
+	return table;
+}
+
+struct sg_table *omap_tiler_heap_map_dma(struct ion_heap *heap,
+						struct ion_buffer *buffer)
+{
+	/*
+	* In case if called from omap_tiler_alloc() filling sgtable by fake table since
+	* we don't have omap_tiler_alloc_info which is required for proper sgtable
+	* allocation.
+	* This table will filled properly later by omap_tiler_alloc() itself since
+	* it has tiler allocation information.
+	*/
+	if (buffer->flags & OMAP_ION_FLAG_NO_ALLOC_TILER_HEAP) {
+		buffer->flags &= ~OMAP_ION_FLAG_NO_ALLOC_TILER_HEAP;
+		return omap_tiler_map_dma_empty(buffer);
+	}
+	if (buffer->sg_table == NULL)
+		return ERR_PTR(-EFAULT);
+	return buffer->sg_table;
+}
+
+void omap_tiler_heap_unmap_dma(struct ion_heap *heap,
+				      struct ion_buffer *buffer)
+{
 }
 
 int omap_tiler_pages(struct ion_client *client, struct ion_handle *handle,
@@ -445,6 +544,8 @@ static struct ion_heap_ops omap_tiler_ops = {
 	.allocate = omap_tiler_heap_allocate,
 	.free = omap_tiler_heap_free,
 	.phys = omap_tiler_phys,
+	.map_dma = omap_tiler_heap_map_dma,
+	.unmap_dma = omap_tiler_heap_unmap_dma,
 	.map_user = omap_tiler_heap_map_user,
 };
 
