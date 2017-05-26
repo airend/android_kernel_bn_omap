@@ -286,7 +286,8 @@ static irqreturn_t twl6030_usb_irq(int irq, void *_twl)
 						     event, &charger_type);
 			wake_unlock(&twl->charger_det_lock);
 		} else {
-			if (twl->prev_status != OMAP_MUSB_UNKNOWN) {
+			if (twl->prev_status != OMAP_MUSB_UNKNOWN &&
+			    twl->prev_status != OMAP_MUSB_ID_GROUND) {
 				if (twl->prev_status == OMAP_MUSB_VBUS_OFF)
 					return IRQ_HANDLED;
 				status = OMAP_MUSB_VBUS_OFF;
@@ -323,6 +324,12 @@ static irqreturn_t twl6030_usbotg_irq(int irq, void *_twl)
 	if (hw_state & STS_USB_ID) {
 		if (twl->prev_status == OMAP_MUSB_ID_GROUND)
 			goto exit;
+		if (twl->prev_status == OMAP_MUSB_VBUS_VALID && twl->asleep) {
+			omap_musb_mailbox(OMAP_MUSB_VBUS_OFF);
+			regulator_disable(twl->usb3v3);
+			twl6030_enable_ldo_input_supply(twl, false);
+			twl->asleep = 0;
+		}
 		twl->prev_status = OMAP_MUSB_ID_GROUND;
 		twl6030_enable_ldo_input_supply(twl, true);
 		regulator_enable(twl->usb3v3);
@@ -358,6 +365,13 @@ static irqreturn_t twl6030_usbotg_irq(int irq, void *_twl)
 		}
 		twl6030_writeb(twl, TWL_MODULE_USB, 0x10, USB_ID_INT_EN_HI_CLR);
 		twl6030_writeb(twl, TWL_MODULE_USB, 0x1, USB_ID_INT_EN_HI_SET);
+		if (twl->asleep) {
+			omap_musb_mailbox(OMAP_MUSB_ID_FLOAT);
+			regulator_disable(twl->usb3v3);
+			twl6030_enable_ldo_input_supply(twl, false);
+			twl->asleep = 0;
+			twl6030_usb_irq(twl->irq2, twl);
+		}
 	}
 exit:
 	twl6030_writeb(twl, TWL_MODULE_USB, USB_ID_INT_MASK,
