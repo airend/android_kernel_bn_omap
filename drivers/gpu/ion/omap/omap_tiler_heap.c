@@ -23,9 +23,6 @@
 #include <linux/scatterlist.h>
 #include <linux/slab.h>
 #include <linux/vmalloc.h>
-#ifdef CONFIG_CMA
-#include <linux/dma-contiguous.h>
-#endif
 #include "../../../drivers/staging/omapdrm/omap_dmm_tiler.h"
 #include <asm/mach/map.h>
 #include <asm/page.h>
@@ -34,8 +31,6 @@
 #include "../ion_priv.h"
 #include "omap_ion_priv.h"
 #include <asm/cacheflush.h>
-
-extern struct device *omap_cma_device;
 
 bool use_dynamic_pages;
 
@@ -133,20 +128,6 @@ static int omap_tiler_alloc_dynamicpages(struct omap_tiler_info *info)
 	int ret;
 	struct page *pg;
 
-#ifdef CONFIG_CMA
-	pg = dma_alloc_from_contiguous(omap_cma_device,
-			info->n_phys_pages, 0);
-	if (!pg) {
-		pr_err("%s: dma_alloc_from_contiguous failed\n", __func__);
-		return -ENOMEM;
-	}
-
-	info->lump = true;
-	for (i = 0; i < info->n_phys_pages; i++)
-		info->phys_addrs[i] = page_to_phys(pg) + i * PAGE_SIZE;
-
-	return 0;
-#else
 	for (i = 0; i < info->n_phys_pages; i++) {
 		pg = alloc_page(GFP_KERNEL | GFP_DMA | GFP_HIGHUSER);
 		if (!pg) {
@@ -169,29 +150,18 @@ err_page_alloc:
 		__free_page(pg);
 	}
 	return ret;
-#endif
 }
 
 static void omap_tiler_free_dynamicpages(struct omap_tiler_info *info)
 {
-	struct page *pg;
-
-#ifdef CONFIG_CMA
-	int ret;
-
-	pg = phys_to_page(info->phys_addrs[0]);
-	ret = dma_release_from_contiguous(omap_cma_device,
-			pg, info->n_phys_pages);
-	if (!ret)
-		pr_err("%s: dma_release_from_contiguous failed\n", __func__);
-#else
 	int i;
+	struct page *pg;
 
 	for (i = 0; i < info->n_phys_pages; i++) {
 		pg = phys_to_page(info->phys_addrs[i]);
 		__free_page(pg);
 	}
-#endif
+	return;
 }
 
 static struct sg_table *omap_tiler_map_dma(struct omap_tiler_info *info,
