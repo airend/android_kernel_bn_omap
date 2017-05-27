@@ -308,8 +308,8 @@ int omap_tiler_alloc(struct ion_heap *heap,
 
 	if (IS_ERR_OR_NULL(info->tiler_handle)) {
 		ret = PTR_ERR(info->tiler_handle);
-		pr_err("%s: failure to allocate address space from tiler\n",
-		       __func__);
+		pr_err("%s: failure to allocate address space from tiler%ud\n",
+		       __func__, (data->fmt == TILFMT_PAGE) ? 1 : 2);
 		goto err_got_mem;
 	}
 
