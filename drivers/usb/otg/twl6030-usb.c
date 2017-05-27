@@ -331,7 +331,7 @@ static irqreturn_t twl6030_usbotg_irq(int irq, void *_twl)
 			twl->asleep = 0;
 		}
 		twl->prev_status = OMAP_MUSB_ID_GROUND;
-		twl6030_enable_ldo_input_supply(twl, true);
+		//twl6030_enable_ldo_input_supply(twl, true);
 		regulator_enable(twl->usb3v3);
 		twl->asleep = 1;
 		twl6030_writeb(twl, TWL_MODULE_USB, 0x1, USB_ID_INT_EN_HI_CLR);
