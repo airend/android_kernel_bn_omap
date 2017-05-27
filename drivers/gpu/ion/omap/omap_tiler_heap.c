@@ -39,10 +39,6 @@ extern struct device *omap_cma_device;
 
 bool use_dynamic_pages;
 
-#ifdef CONFIG_CMA_DEBUG
-int usage = 0;
-#endif
-
 struct omap_ion_heap {
 	struct ion_heap heap;
 	struct gen_pool *pool;
@@ -145,11 +141,6 @@ static int omap_tiler_alloc_dynamicpages(struct omap_tiler_info *info)
 		return -ENOMEM;
 	}
 
-#ifdef CONFIG_CMA_DEBUG
-	usage += info->n_phys_pages * PAGE_SIZE;
-	printk("----+ tiler cma usage: %d kb -----\n", usage / 1024);
-#endif
-
 	info->lump = true;
 	for (i = 0; i < info->n_phys_pages; i++)
 		info->phys_addrs[i] = page_to_phys(pg) + i * PAGE_SIZE;
@@ -193,12 +184,6 @@ static void omap_tiler_free_dynamicpages(struct omap_tiler_info *info)
 			pg, info->n_phys_pages);
 	if (!ret)
 		pr_err("%s: dma_release_from_contiguous failed\n", __func__);
-
-#ifdef CONFIG_CMA_DEBUG
-	usage -= info->n_phys_pages * PAGE_SIZE;
-	printk("----- tiler cma usage: %d kb -----\n", usage / 1024);
-#endif
-
 #else
 	int i;
 
