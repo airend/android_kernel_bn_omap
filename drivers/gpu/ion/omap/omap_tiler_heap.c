@@ -122,9 +122,31 @@ static void omap_tiler_free_carveout(struct ion_heap *heap,
 		gen_pool_free(omap_heap->pool, info->phys_addrs[i], PAGE_SIZE);
 }
 
+#ifdef CONFIG_CMA
+static DEFINE_DMA_ATTRS(attrs);
+void *cpu_addr;
+#endif
+
 static int omap_tiler_alloc_dynamicpages(struct omap_tiler_info *info)
 {
 	int i;
+#ifdef CONFIG_CMA
+	dma_set_attr(DMA_ATTR_WRITE_COMBINE, &attrs);
+	dma_set_attr(DMA_ATTR_SKIP_CPU_SYNC, &attrs);
+	dma_set_attr(DMA_ATTR_NO_KERNEL_MAPPING, &attrs);
+
+	cpu_addr = dma_alloc_attrs(NULL, info->n_phys_pages * PAGE_SIZE,
+			info->phys_addrs, GFP_KERNEL | GFP_HIGHUSER, &attrs);
+
+	if (!cpu_addr) {
+		pr_err("%s: dma_alloc_attrs failed\n", __func__);
+		return -ENOMEM;
+	}
+
+	info->lump = true;
+	for (i = 1; i < info->n_phys_pages; i++)
+		info->phys_addrs[i] = info->phys_addrs[i-1] + PAGE_SIZE;
+#else
 	int ret;
 	struct page *pg;
 
@@ -142,18 +164,26 @@ static int omap_tiler_alloc_dynamicpages(struct omap_tiler_info *info)
 		outer_flush_range(info->phys_addrs[i],
 			info->phys_addrs[i] + PAGE_SIZE);
 	}
+#endif
 	return 0;
 
+#ifndef CONFIG_CMA
 err_page_alloc:
 	for (i -= 1; i >= 0; i--) {
 		pg = phys_to_page(info->phys_addrs[i]);
 		__free_page(pg);
 	}
 	return ret;
+#endif
 }
 
 static void omap_tiler_free_dynamicpages(struct omap_tiler_info *info)
 {
+#ifdef CONFIG_CMA
+	dma_free_attrs(NULL, info->n_phys_pages * PAGE_SIZE, cpu_addr,
+						*info->phys_addrs, &attrs);
+	cpu_addr = NULL;
+#else
 	int i;
 	struct page *pg;
 
@@ -161,6 +191,7 @@ static void omap_tiler_free_dynamicpages(struct omap_tiler_info *info)
 		pg = phys_to_page(info->phys_addrs[i]);
 		__free_page(pg);
 	}
+#endif
 	return;
 }
 
