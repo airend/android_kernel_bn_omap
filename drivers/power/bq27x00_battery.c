@@ -40,6 +40,7 @@
 #include <linux/debugfs.h>
 #include <linux/thermal_framework.h>
 #include <asm/unaligned.h>
+#include <linux/mfd/palmas.h>
 
 #include <linux/power/bq27x00_battery.h>
 
@@ -192,15 +193,6 @@ static enum power_supply_property bq27x00_usb_props[] = {
 module_param(poll_interval, uint, 0644);
 MODULE_PARM_DESC(poll_interval, "battery poll interval in seconds - " \
 				"0 disables polling");
-
-#ifdef CONFIG_PALMAS_USB
-int palmas_usb_register_notifier(struct notifier_block *nb);
-int palmas_usb_unregister_notifier(struct notifier_block *nb);
-#endif
-#ifdef CONFIG_TWL6030_USB
-int twl6030_usb_register_notifier(struct notifier_block *nb);
-int twl6030_usb_unregister_notifier(struct notifier_block *nb);
-#endif
 
 /*
  * Common code for BQ27x00 devices
@@ -909,13 +901,6 @@ static void bq27x00_powersupply_unregister(struct bq27x00_device_info *di)
 	 */
 	poll_interval = 0;
 
-#ifdef CONFIG_PALMAS_USB
-	palmas_usb_unregister_notifier(&di->nb);
-#endif
-#ifdef CONFIG_TWL6030_USB
-	twl6030_usb_unregister_notifier(&di->nb);
-#endif
-
 	cancel_delayed_work_sync(&di->work);
 	destroy_workqueue(di->wq);
 
@@ -1008,15 +993,9 @@ static int bq27x00_usb_notifier_call(struct notifier_block *nb,
 	u8 val = (di->chip == BQ27530) ?
 		bq27x00_read_i2c(di, BQ24160_CHRGR_CONTROL_REG, false) & ~IUSB_LIMIT_MASK : 0;
 
-	di->charger_type = POWER_SUPPLY_TYPE_UNKNOWN;
-#ifdef CONFIG_PALMAS_USB
 	di->charger_type = event;
-#endif
-#ifdef CONFIG_TWL6030_USB
-	di->charger_type = *(int *)data;
-#endif
 
-	switch (di->charger_type) {
+	switch (event) {
 	case POWER_SUPPLY_TYPE_UNKNOWN:
 	case POWER_SUPPLY_TYPE_BATTERY:
 		if (di->chip == BQ27530) {
@@ -1210,12 +1189,7 @@ static int bq27x00_battery_probe(struct i2c_client *client,
 	i2c_set_clientdata(client, di);
 
 	di->nb.notifier_call = bq27x00_usb_notifier_call;
-#ifdef CONFIG_PALMAS_USB
 	palmas_usb_register_notifier(&di->nb);
-#endif
-#ifdef CONFIG_TWL6030_USB
-	twl6030_usb_register_notifier(&di->nb);
-#endif
 
 	/* Register Battery as cooling device for Case domain */
 	if (di->battery_present) {
