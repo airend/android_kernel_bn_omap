@@ -1,5 +1,5 @@
 /*
- * Device Tree Source for OMAP4460 SoC
+ * Device Tree Source for OMAP4470 SoC
  *
  * Copyright (C) 2012 Texas Instruments Incorporated - http://www.ti.com/
  *
@@ -17,9 +17,8 @@
 				/* kHz    uV */
 				396800  1025000
 				800000  1200000
-				/* TODO: see what we have to do to enable these */
-				/* 1100000 1312000 */
-				/* 1300000 1375000 */
+				1100000 1312000
+				1300000 1375000
 				/* 1500000 1380000 */
 			>;
 			clock-latency = <300000>; /* From legacy driver */
@@ -47,7 +46,7 @@
 			reg = <0x4a002260 0x4
 			       0x4a00232C 0x4
 			       0x4a002378 0x18>;
-			compatible = "ti,omap4460-bandgap";
+			compatible = "ti,omap4470-bandgap";
 			interrupts = <0 126 IRQ_TYPE_LEVEL_HIGH>; /* talert */
 			gpios = <&gpio3 22 GPIO_ACTIVE_HIGH>; /* tshut */
 
@@ -66,9 +65,9 @@
 			/*uV		ABB	efuse	rbb_m	fbb_m	vset_m*/
 			1025000		0	0	0	0	0
 			1200000		0	0	0	0	0
-			1313000		0	0	0x100000 0x40000 0
+			1312000		0	0	0x100000 0x40000 0
 			1375000		1	0	0	0	0
-			1389000		1	0	0	0	0
+			1380000		1	0	0	0	0
 			>;
 		};
 
