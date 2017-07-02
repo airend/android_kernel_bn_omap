@@ -294,6 +294,20 @@
 
 &gpio3 {
 	ti,no-reset-on-init;
+
+	chg_level {
+		gpio-hog;
+		gpios = <20 GPIO_ACTIVE_HIGH>;
+		output-low;
+	};
+};
+
+&gpio4 {
+	gg_ce {
+		gpio-hog;
+		gpios = <17 GPIO_ACTIVE_HIGH>;
+		output-low;
+	};
 };
 
 &gpio5 {
@@ -309,6 +323,7 @@
 	vmmc-supply = <&vaux1>;
 	bus-width = <8>;
 	ti,non-removable;
+	no-1-8-v;
 };
 
 &mmc3 {
