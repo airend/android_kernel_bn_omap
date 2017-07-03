@@ -267,6 +267,20 @@
 
 	clock-frequency = <400000>;
 
+	polytouch: edt-ft5x06@38 {
+		compatible = "edt,edt-ft5506", "edt,edt-ft5x06";
+		reg = <0x38>;
+		//pinctrl-names = "default";
+		//pinctrl-0 = <&edt_ft5x06_pins>;
+		interrupt-parent = <&gpio2>;
+		interrupts = <5 IRQ_TYPE_EDGE_FALLING>;
+		reset-gpios = <&gpio2 7 GPIO_ACTIVE_LOW>;
+		wake-gpios = <&gpio2 4 GPIO_ACTIVE_HIGH>;
+
+		touchscreen-size-x = <900>;
+		touchscreen-size-y = <1440>;
+	};
+
 	battery: bq27510@55 {
 		compatible = "ti,bq27510";
 		reg = <0x55>;
