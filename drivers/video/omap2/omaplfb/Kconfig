@@ -1,7 +1,7 @@
 config OMAPLFB
-        bool "In-kernel omaplfb support"
+        tristate "OMAPLFB support"
         depends on OMAP2_DSS && DSSCOMP
 	default n
 	help
-	  Support for in-kernel omaplfb. This is an interface between display and the
-	  kernel side PowerVR graphics driver.
+	  Support for in-kernel or modular omaplfb. This is an interface between
+	  display and the kernel side PowerVR graphics driver.
