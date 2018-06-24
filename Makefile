@@ -249,14 +249,9 @@ CONFIG_SHELL := $(shell if [ -x "$$BASH" ]; then echo $$BASH; \
 
 HOSTCC       = gcc
 HOSTCXX      = g++
-HOSTOS      := $(shell uname -s)
-HOSTCFLAGS   = -Wall -Wmissing-prototypes -Wstrict-prototypes -fomit-frame-pointer
-ifneq ($(HOSTOS), Darwin)
+HOSTCFLAGS   = -Wall -Wmissing-prototypes -Wstrict-prototypes $(COMMONFLAGS) \
+	-fomit-frame-pointer -floop-parallelize-all -ftree-parallelize-loops=4
 HOSTCXXFLAGS = $(COMMONFLAGS) -floop-parallelize-all -ftree-parallelize-loops=4
-else
-HOSTCXXFLAGS = -O2
-endif
-HOSTCFLAGS  += $(HOSTCXXFLAGS)
 
 # Decide whether to build built-in, modular, or both.
 # Normally, just do built-in.
