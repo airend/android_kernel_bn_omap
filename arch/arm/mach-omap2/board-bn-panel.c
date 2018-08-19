@@ -524,7 +524,7 @@ static void __init bn_lcd_init(void)
 	omap4_ctrl_pad_writel(reg, OMAP4_CTRL_MODULE_PAD_CORE_CONTROL_DSIPHY);
 }
 
-void bn_android_display_setup(void)
+void __init bn_android_display_setup(void)
 {
 #ifdef CONFIG_MACH_OMAP_HUMMINGBIRD
 	if ((system_rev >= HUMMINGBIRD_EVT0B) && !strncmp(display, "AUO", 3)) {
